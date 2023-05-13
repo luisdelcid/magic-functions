@@ -92,6 +92,25 @@ function __maybe_fix_audio_video_ext($wp_check_filetype_and_ext, $file, $filenam
 }
 
 /**
+ * @return bool
+ */
+function __maybe_generate_attachment_metadata($attachment_id = 0){
+	$attachment = get_post($attachment_id);
+	if(null === $attachment){
+		return false;
+	}
+	if('attachment' !== $attachment->post_type){
+		return false;
+	}
+	wp_raise_memory_limit('image');
+	if(!function_exists('wp_generate_attachment_metadata')){
+		require_once(ABSPATH . 'wp-admin/includes/image.php');
+	}
+	wp_maybe_generate_attachment_metadata($attachment);
+	return true;
+}
+
+/**
  * @return void
  */
 function __maybe_sanitize_file_name($filename){

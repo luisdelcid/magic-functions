@@ -71,6 +71,7 @@ function __maybe_enqueue_utm(){
     $current_utm['utm_query'] = build_query($current_utm);
 	ksort($current_utm);
     $object_name = __prefix('utm');
+    wp_enqueue_script('jquery');
     wp_localize_script('jquery', $object_name, $current_utm);
 }
 

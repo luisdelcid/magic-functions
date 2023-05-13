@@ -1,6 +1,42 @@
 <?php
 
 /**
+ * @return bool
+ */
+function __are_plugins_active($plugins = []){
+	if(!is_array($plugins)){
+		return false;
+	}
+	foreach($plugins as $plugin){
+		if(!__is_plugin_active($plugin)){
+			return false;
+		}
+	}
+	return true;
+}
+
+/**
+ * @return bool
+ */
+function __is_plugin_active($plugin = ''){
+	if(!function_exists('is_plugin_active')){
+		require_once(ABSPATH . 'wp-admin/includes/plugin.php');
+	}
+	return is_plugin_active($plugin);
+}
+
+/**
+ * @return bool
+ */
+function __is_plugin_deactivating($file = ''){
+	global $pagenow;
+	if(!@is_file($file)){
+		return false;
+	}
+	return (is_admin() and 'plugins.php' === $pagenow and isset($_GET['action'], $_GET['plugin']) and 'deactivate' === $_GET['action'] and plugin_basename($file) === $_GET['plugin']);
+}
+
+/**
  * @return string
  */
 function __localize($data = []){

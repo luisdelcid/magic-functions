@@ -1,6 +1,50 @@
 <?php
 
 /**
+ * @return int
+ */
+function __attachment_url_to_postid($url = ''){
+	$post_id = __guid_to_postid($url);
+	if($post_id){
+		return $post_id;
+	}
+	preg_match('/^(.+)(\-\d+x\d+)(\.' . substr($url, strrpos($url, '.') + 1) . ')?$/', $url, $matches); // resized
+	if($matches){
+		$url = $matches[1];
+		if(isset($matches[3])){
+			$url .= $matches[3];
+		}
+		$post_id = __guid_to_postid($url);
+		if($post_id){
+			return $post_id;
+		}
+	}
+	preg_match('/^(.+)(\-scaled)(\.' . substr($url, strrpos($url, '.') + 1) . ')?$/', $url, $matches); // scaled
+	if($matches){
+		$url = $matches[1];
+		if(isset($matches[3])){
+			$url .= $matches[3];
+		}
+		$post_id = __guid_to_postid($url);
+		if($post_id){
+			return $post_id;
+		}
+	}
+	preg_match('/^(.+)(\-e\d+)(\.' . substr($url, strrpos($url, '.') + 1) . ')?$/', $url, $matches); // edited
+	if($matches){
+		$url = $matches[1];
+		if(isset($matches[3])){
+			$url .= $matches[3];
+		}
+		$post_id = __guid_to_postid($url);
+		if($post_id){
+			return $post_id;
+		}
+	}
+	return 0;
+}
+
+/**
  * @return string
  */
 function __fa_file_type($post = null){

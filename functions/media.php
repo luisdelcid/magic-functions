@@ -1,0 +1,120 @@
+<?php
+
+/**
+ * @return string
+ */
+function __fa_file_type($post = null){
+	if('attachment' !== get_post_status($post)){
+		return '';
+	}
+	if(wp_attachment_is('audio', $post)){
+		return 'audio';
+	}
+	if(wp_attachment_is('image', $post)){
+		return 'image';
+	}
+	if(wp_attachment_is('video', $post)){
+		return 'video';
+	}
+	$type = get_post_mime_type($post);
+	switch($type){
+		case 'application/zip':
+		case 'application/x-rar-compressed':
+		case 'application/x-7z-compressed':
+		case 'application/x-tar':
+			return 'archive';
+			break;
+		case 'application/vnd.ms-excel':
+		case 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':
+			return 'excel';
+			break;
+		case 'application/pdf':
+			return 'pdf';
+			break;
+		case 'application/vnd.ms-powerpoint':
+		case 'application/vnd.openxmlformats-officedocument.presentationml.presentation':
+			return 'powerpoint';
+			break;
+		case 'application/msword':
+		case 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
+			return 'word';
+			break;
+		default:
+			return 'file';
+	}
+}
+
+/**
+ * @return void
+ */
+function __fix_audio_video_ext(){
+    __set_cache('fix_audio_video_ext', true);
+	__one('wp_check_filetype_and_ext', '__maybe_fix_audio_video_ext', 10, 5);
+}
+
+/**
+ * @return int
+ */
+function __guid_to_postid($guid = '', $check_rewrite_rules = false){
+	global $wpdb;
+	$query = $wpdb->prepare("SELECT ID FROM $wpdb->posts WHERE guid = %s", $guid);
+	$post_id = $wpdb->get_var($query);
+	if(null !== $post_id){
+		return intval($post_id);
+	}
+	if($check_rewrite_rules){
+		return url_to_postid($guid);
+	}
+	return 0;
+}
+
+/**
+ * @return void
+ */
+function __maybe_fix_audio_video_ext($wp_check_filetype_and_ext, $file, $filename, $mimes, $real_mime){
+    $fix_audio_video_ext = (bool) __get_cache('fix_audio_video_ext', false);
+	if(!$fix_audio_video_ext){
+		return $wp_check_filetype_and_ext;
+	}
+    if($wp_check_filetype_and_ext['ext'] and $wp_check_filetype_and_ext['type']){
+        return $wp_check_filetype_and_ext;
+    }
+    if(0 !== strpos($real_mime, 'audio/') and 0 !== strpos($real_mime, 'video/')){
+        return $wp_check_filetype_and_ext;
+    }
+    $filetype = wp_check_filetype($filename);
+    if(!in_array(substr($filetype['type'], 0, strcspn($filetype['type'], '/')), ['audio', 'video'])){
+        return $wp_check_filetype_and_ext;
+    }
+    $wp_check_filetype_and_ext['ext'] = $filetype['ext'];
+    $wp_check_filetype_and_ext['type'] = $filetype['type'];
+    return $wp_check_filetype_and_ext;
+}
+
+/**
+ * @return void
+ */
+function __maybe_sanitize_file_name($filename){
+    $sanitize_file_names = (bool) __get_cache('sanitize_file_names', false);
+	if(!$sanitize_file_names){
+		return $filename;
+	}
+	return __sanitize_file_name($filename);
+}
+
+/**
+ * @return string
+ */
+function __sanitize_file_name($filename = ''){
+	return implode('.', array_map(function($piece){
+		return preg_replace('/[^A-Za-z0-9_-]/', '', $piece);
+	}, explode('.', $filename)));
+}
+
+/**
+ * @return void
+ */
+function __sanitize_file_names(){
+	__set_cache('sanitize_file_names', true);
+	__one('sanitize_file_name', '__maybe_sanitize_file_name');
+}

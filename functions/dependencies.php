@@ -24,6 +24,34 @@ function __enqueue($handle = '', $src = '', $deps = [], $ver = false, $in_footer
 /**
  * @return void
  */
+function __enqueue_fa6($preferred_version = '6.4.0'){
+	$hook_name = __prefix('fa6_preferred_version');
+	$preferred_version = __filter($hook_name, $preferred_version);
+	__set_cache('enqueue_fa6', $preferred_version);
+	__one('wp_enqueue_scripts', '__maybe_enqueue_scripts');
+}
+
+/**
+ * @return void
+ */
+function __enqueue_inputmask($preferred_version = '5.0.8'){
+	$hook_name = __prefix('inputmask_preferred_version');
+	$preferred_version = __filter($hook_name, $preferred_version);
+	__set_cache('enqueue_inputmask', $preferred_version);
+	__one('wp_enqueue_scripts', '__maybe_enqueue_scripts');
+}
+
+/**
+ * @return void
+ */
+function __enqueue_stylesheet(){
+	__set_cache('enqueue_stylesheet', true);
+	__one('wp_enqueue_scripts', '__maybe_enqueue_scripts');
+}
+
+/**
+ * @return void
+ */
 function __local_enqueue($handle = '', $file = '', $deps = [], $in_footer_media = true){
 	if(!file_exists($file)){
 		return;
@@ -43,4 +71,25 @@ function __local_enqueue($handle = '', $file = '', $deps = [], $in_footer_media 
 	$src = __dir_to_url($file);
 	$ver = filemtime($file);
 	__enqueue($handle, $src, $deps, $ver, $in_footer_media);
+}
+
+/**
+ * @return void
+ */
+function __maybe_enqueue_scripts(){
+	$enqueue_stylesheet = (bool) __get_cache('enqueue_stylesheet', false);
+	if($enqueue_stylesheet){
+		$file = get_stylesheet_directory() . '/style.css';
+		$ver = filemtime($file);
+		__enqueue(get_stylesheet(), get_stylesheet_uri(), [], $ver);
+	}
+	$enqueue_fa6 = (string) __get_cache('enqueue_fa6', '');
+	if($enqueue_fa6){
+		__enqueue('font-awesome-6', 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/' . $enqueue_fa6 . '/css/all.min.css', [], $enqueue_fa6);
+	}
+	$enqueue_inputmask = (string) __get_cache('enqueue_inputmask', '');
+	if($enqueue_inputmask){
+		__enqueue('jquery-inputmask', 'https://cdnjs.cloudflare.com/ajax/libs/jquery.inputmask/' . $enqueue_inputmask . '/jquery.inputmask.min.js', ['jquery'], $enqueue_inputmask);
+	}
+
 }

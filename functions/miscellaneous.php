@@ -1,6 +1,46 @@
 <?php
 
 /**
+ * @return null|void|WP_Role
+ */
+function __clone_role($source = '', $destination = '', $display_name = ''){
+	$role = get_role($source);
+	if(is_null($role)){
+		return null;
+	}
+	$destination = __canonicalize($destination);
+	return add_role($destination, $display_name, $role->capabilities);
+}
+
+/**
+ * @return bool
+ */
+function __current_screen_in($ids = []){
+	global $current_screen;
+	if(!is_array($ids)){
+		return false;
+	}
+	if(!isset($current_screen)){
+		return false;
+	}
+	return in_array($current_screen->id, $ids);
+}
+
+/**
+ * @return bool
+ */
+function __current_screen_is($id = ''){
+	global $current_screen;
+	if(!is_string($id)){
+		return false;
+	}
+	if(!isset($current_screen)){
+		return false;
+	}
+	return ($current_screen->id === $id);
+}
+
+/**
  * @return bool|WP_Error
  */
 function __custom_login_logo($attachment_id = 0, $half = true){
@@ -23,6 +63,29 @@ function __custom_login_logo($attachment_id = 0, $half = true){
     __set_cache('custom_login_logo', $custom_login_logo);
     __one('login_enqueue_scripts', '__maybe_replace_login_logo');
 	return true;
+}
+
+/**
+ * @return string
+ */
+function __format_function($function_name = '', $args = []){
+	$str = '<div style="color: #24831d; font-family: monospace; font-weight: 400;">' . $function_name . '(';
+	$function_args = [];
+	foreach($args as $arg){
+		$arg = shortcode_atts([
+			'default' => 'null',
+			'name' => '',
+			'type' => '',
+		], $arg);
+		if($arg['default'] and $arg['name'] and $arg['type']){
+			$function_args[] = '<span style="color: #cd2f23; font-family: monospace; font-style: italic; font-weight: 400;">' . $arg['type'] . '</span> <span style="color: #0f55c8; font-family: monospace; font-weight: 400;">$' . $arg['name'] . '</span> = <span style="color: #000; font-family: monospace; font-weight: 400;">' . $arg['default'] . '</span>';
+		}
+	}
+	if($function_args){
+		$str .= ' ' . implode(', ', $function_args) . ' ';
+	}
+	$str .= ')</div>';
+	return $str;
 }
 
 /**

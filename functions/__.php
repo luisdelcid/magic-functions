@@ -26,7 +26,7 @@ function __maybe_include_theme_functions(){
 /**
  * @return string
  */
-function __prefix($str = '', $prefix = '__'){
+function __prefix($str = '', $prefix = '__'){ // Hardcoded.
 	if(!$prefix){
 		return '';
 	}
@@ -48,7 +48,7 @@ function __prefix($str = '', $prefix = '__'){
 /**
  * @return string
  */
-function __slug($str = '', $slug = '--'){
+function __slug($str = '', $slug = '--'){ // Hardcoded.
 	if(!$slug){
 		return '';
 	}

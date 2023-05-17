@@ -32,7 +32,7 @@ function __maybe_include_theme_functions(){
 	if(!$include_theme_functions){
 		return;
 	}
-	$file = get_stylesheet_directory() . '/' . __slug('functions.php');
+	$file = get_stylesheet_directory() . '/' . __prefix('functions.php');
 	if(!file_exists($file)){
 		return;
 	}

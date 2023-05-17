@@ -16,6 +16,18 @@ function __are_plugins_active($plugins = []){
 }
 
 /**
+ * @return mixed
+ */
+function __get_plugin_cache($key = '', $default = null){
+	$group = __plugin_prefix(false);
+	$value = wp_cache_get($key, $group, false, $found);
+	if($found){
+		return $value;
+	}
+    return $default;
+}
+
+/**
  * @return bool
  */
 function __is_plugin_active($plugin = ''){
@@ -34,6 +46,15 @@ function __is_plugin_deactivating($file = ''){
 		return false;
 	}
 	return (is_admin() and 'plugins.php' === $pagenow and isset($_GET['action'], $_GET['plugin']) and 'deactivate' === $_GET['action'] and plugin_basename($file) === $_GET['plugin']);
+}
+
+/**
+ * @return bool
+ */
+function __isset_plugin_cache($key = ''){
+	$group = __plugin_prefix(false);
+	$value = wp_cache_get($key, $group, false, $found);
+    return $found;
 }
 
 /**
@@ -283,6 +304,29 @@ function __plugin_slug($str = '', $file = ''){
 /**
  * @return void
  */
+function __plugin_update_check($url = '', $file = ''){
+	$url = wp_http_validate_url($url);
+	if(!$url){
+		return;
+	}
+	if(!$file){
+		$file = __caller_file();
+	}
+	$plugin_file = __plugin_file($file);
+	if(!$plugin_file){
+		return '';
+	}
+	$slug = __plugin_slug(false, $file);
+	$metadata_url = add_query_arg([
+		'action' => 'get_metadata',
+		'slug' => $slug,
+	], $url);
+	__check_for_updates($metadata_url, $plugin_file, $slug);
+}
+
+/**
+ * @return void
+ */
 function __plugin_update_license($license = '', $file = ''){
 	if(!$license){
 		return;
@@ -292,4 +336,20 @@ function __plugin_update_license($license = '', $file = ''){
 	}
 	$slug = __plugin_slug(false, $file);
 	__set_update_license($slug, $license);
+}
+
+/**
+ * @return bool
+ */
+function __set_plugin_cache($key = '', $data = null){
+	$group = __plugin_prefix(false);
+	return wp_cache_set($key, $data, $group);
+}
+
+/**
+ * @return bool
+ */
+function __unset_plugin_cache($key = ''){
+	$group = __plugin_prefix(false);
+	return wp_cache_delete($key, $group);
 }

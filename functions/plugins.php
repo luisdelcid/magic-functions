@@ -39,23 +39,6 @@ function __is_plugin_deactivating($file = ''){
 /**
  * @return string
  */
-function __localize($data = []){
-	if(is_string($data)){
-		$data = html_entity_decode($data, ENT_QUOTES, 'UTF-8');
-	} else {
-		foreach((array) $data as $key => $value){
-			if(!is_scalar($value)){
-				continue;
-			}
-			$data[$key] = html_entity_decode((string) $value, ENT_QUOTES, 'UTF-8');
-		}
-	}
-	return wp_json_encode($data);
-}
-
-/**
- * @return string
- */
 function __plugin_basename($file = ''){
 	if(!$file){
 		$debug = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 1);
@@ -66,6 +49,30 @@ function __plugin_basename($file = ''){
 		return '';
 	}
 	return plugin_basename($plugin_file);
+}
+
+/**
+ * @return bool
+ */
+function __plugin_did($hook_name = ''){
+    $hook_name = __plugin_prefix($hook_name);
+	return __did($hook_name);
+}
+
+/**
+ * @return void
+ */
+function __plugin_do($hook_name = '', ...$arg){
+	$hook_name = __plugin_prefix($hook_name);
+	__do($hook_name, ...$arg);
+}
+
+/**
+ * @return bool
+ */
+function __plugin_doing($hook_name = ''){
+	$hook_name = __plugin_prefix($hook_name);
+    return __doing($hook_name);
 }
 
 /**
@@ -135,6 +142,46 @@ function __plugin_file($file = ''){
 }
 
 /**
+ * @return mixed
+ */
+function __plugin_filter($hook_name = '', $value = null, ...$arg){
+	$hook_name = __plugin_prefix($hook_name);
+    return __filter($hook_name, $value, ...$arg);
+}
+
+/**
+ * @return bool
+ */
+function __plugin_has($hook_name = '', $callback = null){
+	$hook_name = __plugin_prefix($hook_name);
+    return __has($hook_name, $callback);
+}
+
+/**
+ * @return bool
+ */
+function __plugin_off($hook_name = '', $callback = null, $priority = 10){
+	$hook_name = __plugin_prefix($hook_name);
+    return __off($hook_name, $callback, $priority);
+}
+
+/**
+ * @return string
+ */
+function __plugin_on($hook_name = '', $callback = null, $priority = 10, $accepted_args = 1){
+	$hook_name = __plugin_prefix($hook_name);
+	return __on($hook_name, $callback, $priority, $accepted_args);
+}
+
+/**
+ * @return string
+ */
+function __plugin_one($hook_name = '', $callback = null, $priority = 10, $accepted_args = 1){
+	$hook_name = __plugin_prefix($hook_name);
+	return __one($hook_name, $callback, $priority, $accepted_args);
+}
+
+/**
  * @return string
  */
 function __plugin_prefix($str = '', $file = ''){
@@ -147,7 +194,7 @@ function __plugin_prefix($str = '', $file = ''){
 		return '';
 	}
 	$basename = wp_basename($plugin_file, '.php');
-	return __prefix($basename, $str);
+	return __prefix($str, $basename);
 }
 
 /**
@@ -163,5 +210,5 @@ function __plugin_slug($str = '', $file = ''){
 		return '';
 	}
 	$basename = wp_basename($plugin_file, '.php');
-	return __slug($basename, $str);
+	return __slug($str, $basename);
 }

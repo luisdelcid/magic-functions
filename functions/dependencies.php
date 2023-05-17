@@ -74,6 +74,23 @@ function __local_enqueue($handle = '', $file = '', $deps = [], $in_footer_media 
 }
 
 /**
+ * @return string
+ */
+function __localize($data = []){
+	if(is_string($data)){
+		$data = html_entity_decode($data, ENT_QUOTES, 'UTF-8');
+	} else {
+		foreach((array) $data as $key => $value){
+			if(!is_scalar($value)){
+				continue;
+			}
+			$data[$key] = html_entity_decode((string) $value, ENT_QUOTES, 'UTF-8');
+		}
+	}
+	return wp_json_encode($data);
+}
+
+/**
  * @return void
  */
 function __maybe_enqueue_scripts(){

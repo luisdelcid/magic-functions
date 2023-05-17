@@ -42,25 +42,6 @@ function __maybe_build_update_checkers(){
 /**
  * @return void
  */
-function __plugin_update_license($license = '', $file = ''){
-	if(!$license){
-		return;
-	}
-	if(!$file){
-		$debug = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 1);
-		$file = $debug[0]['file'];
-	}
-	$plugin_file = __plugin_file($file);
-	if(!$plugin_file){
-		return;
-	}
-	$slug = __plugin_slug(false, $plugin_file);
-	__set_update_license($slug, $license);
-}
-
-/**
- * @return void
- */
 function __set_update_license($slug = '', $license = ''){
 	if(!$slug or !$license){
 		return;

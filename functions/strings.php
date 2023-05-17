@@ -94,6 +94,28 @@ function __one_p($text = '', $dot = true, $p = 'first'){
 /**
  * @return string
  */
+function __prefix($str = '', $prefix = '__'){ // Hardcoded.
+	if(!$prefix){
+		return '';
+	}
+	$prefix = str_replace('\\', '_', $prefix); // fix namespaces
+	$prefix = __canonicalize($prefix);
+    if(false === $str){
+        return $prefix;
+    }
+    if($prefix === $str){
+        return $str;
+    }
+    $prefix .= '_';
+    if(0 === strpos($str, $prefix)){
+        return $str;
+    }
+    return $prefix . $str;
+}
+
+/**
+ * @return string
+ */
 function __prepare($str = '', ...$args){
 	global $wpdb;
 	if(!$args){
@@ -113,6 +135,32 @@ function __prepare($str = '', ...$args){
  */
 function __remove_whitespaces($str = ''){
 	return trim(preg_replace('/[\n\r\s\t]+/', ' ', $str));
+}
+
+/**
+ * @return string
+ */
+function __slug($str = '', $slug = '--'){ // Hardcoded.
+	if(!$slug){
+		return '';
+	}
+	$slug = str_replace('_', '-', $slug); // fix canonicalized
+    $slug = str_replace('\\', '-', $slug); // fix namespaces
+	$slug = sanitize_title($slug);
+	if(true === $str){
+		return $slug . '-';
+	}
+    if(!$str){
+        return $slug;
+    }
+    if($slug === $str){
+        return $str;
+    }
+    $slug .= '-';
+    if(0 === strpos($str, $slug)){
+        return $str;
+    }
+    return $slug . $str;
 }
 
 /**

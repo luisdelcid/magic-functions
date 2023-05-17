@@ -19,4 +19,5 @@ defined('ABSPATH') or die('Hi there! I\'m just a plugin, not much I can do when 
 foreach(glob(plugin_dir_path(__FILE__) . 'functions/*.php') as $file){
     require_once($file);
 }
+__enqueue_functions();
 __include_theme_functions();

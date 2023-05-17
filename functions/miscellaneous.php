@@ -100,6 +100,14 @@ function __format_function($function_name = '', $args = []){
 }
 
 /**
+ * @return void
+ */
+function __include_theme_functions(){
+	__set_cache('include_theme_functions', true);
+	__one('after_setup_theme', '__maybe_include_theme_functions');
+}
+
+/**
  * @return bool
  */
 function __is_doing_heartbeat(){
@@ -127,6 +135,21 @@ function __local_login_header(){
     __set_cache('local_login_header', true);
     __one('login_headertext', '__maybe_local_login_headertext');
     __one('login_headerurl', '__maybe_local_login_headerurl');
+}
+
+/**
+ * @return void
+ */
+function __maybe_include_theme_functions(){
+    $include_theme_functions = (bool) __get_cache('include_theme_functions', false);
+	if(!$include_theme_functions){
+		return;
+	}
+	$file = get_stylesheet_directory() . '/' . __prefix('functions.php');
+	if(!file_exists($file)){
+		return;
+	}
+	require_once($file);
 }
 
 /**
@@ -168,6 +191,13 @@ function __maybe_replace_login_logo(){
 			width: <?php echo $custom_login_logo[1]; ?>px;
 		}
 	</style><?php
+}
+
+/**
+ * @return void
+ */
+function __test(){
+	__die('Hello, World!');
 }
 
 /**

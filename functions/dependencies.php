@@ -34,6 +34,16 @@ function __enqueue_fa6($preferred_version = '6.4.0'){
 /**
  * @return void
  */
+function __enqueue_functions(){
+	__set_cache('enqueue_functions', true);
+	__one('admin_enqueue_scripts', '__maybe_enqueue_functions');
+	__one('login_enqueue_scripts', '__maybe_enqueue_functions');
+	__one('wp_enqueue_scripts', '__maybe_enqueue_functions');
+}
+
+/**
+ * @return void
+ */
 function __enqueue_inputmask($preferred_version = '5.0.8'){
 	$hook_name = __prefix('inputmask_preferred_version');
 	$preferred_version = __filter($hook_name, $preferred_version);
@@ -88,6 +98,29 @@ function __localize($data = []){
 		}
 	}
 	return wp_json_encode($data);
+}
+
+/**
+ * @return void
+ */
+function __maybe_enqueue_functions(){
+	$enqueue_functions = (bool) __get_cache('enqueue_functions', false);
+	if(!$enqueue_functions){
+		return;
+	}
+	$handle = __prefix('functions');
+	$file = plugin_dir_path(__FILE__) . 'functions.js';
+	__local_enqueue($handle, $file, ['jquery', 'wp-hooks']);
+	$object_name = __prefix('object');
+	$mu_plugin_dir = wp_normalize_path(WPMU_PLUGIN_DIR);
+	$plugin_dir = wp_normalize_path(WP_PLUGIN_DIR);
+	$site_url = site_url();
+	$l10n = [
+		'mu_plugins_url' => __dir_to_url($mu_plugin_dir),
+		'plugins_url' => __dir_to_url($plugin_dir),
+		'site_url' => $site_url,
+	];
+    wp_localize_script($handle, $object_name, $l10n);
 }
 
 /**

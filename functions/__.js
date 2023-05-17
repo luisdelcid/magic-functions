@@ -158,7 +158,7 @@ function __document_visibility(){
  * @return string
  */
 function __document_visibility_change(){
-	__do_action('visibilitychange', __document_visibility());
+	__do_action('visibilitychange', __document_visibility()); // hidden
 }
 
 /**

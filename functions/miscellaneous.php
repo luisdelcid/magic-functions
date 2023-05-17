@@ -1,6 +1,17 @@
 <?php
 
 /**
+ * @return string
+ */
+function __caller_file(){
+	$debug = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2);
+	if(2 > count($debug)){
+		return '';
+	}
+	return $debug[1]['file'];
+}
+
+/**
  * @return null|void|WP_Role
  */
 function __clone_role($source = '', $destination = '', $display_name = ''){

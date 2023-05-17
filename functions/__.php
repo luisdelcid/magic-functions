@@ -8,8 +8,8 @@ function __enqueue_object(){
 	$plugin_dir = wp_normalize_path(WP_PLUGIN_DIR);
 	$site_url = site_url();
 	$l10n = [
-		'mu_plugin_url' => __dir_to_url($mu_plugin_dir),
-		'plugin_url' => __dir_to_url($plugin_dir),
+		'mu_plugins_url' => __dir_to_url($mu_plugin_dir),
+		'plugins_url' => __dir_to_url($plugin_dir),
 		'site_url' => $site_url,
 	];
 	$object_name = __prefix('object');

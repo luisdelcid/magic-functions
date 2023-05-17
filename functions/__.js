@@ -1,4 +1,18 @@
 /**
+ * @return void
+ */
+function __add_action(hook_name = '', callback = null, priority = 10){
+	wp.hooks.addAction(hook_name, __namespace(), callback, priority);
+}
+
+/**
+ * @return void
+ */
+function __add_filter(hook_name = '', callback = null, priority = 10){
+	wp.hooks.addFilter(hook_name, __namespace(), callback, priority);
+}
+
+/**
  * @return string
  */
 function __add_query_arg(key, value, url){
@@ -88,11 +102,39 @@ function __add_query_args(args, url){
 }
 
 /**
+ * @return mixed
+ */
+function __apply_filters(hook_name = '', value = null, ...arg){
+	return wp.hooks.applyFilters(hook_name, value, ...arg);
+}
+
+/**
  * @return array
  */
 __current_utm(){
 	var object_name = __prefix('utm');
     return 'undefined' !== typeof(window[object_name]) ? window[object_name] : {};
+}
+
+/**
+ * @return int|void
+ */
+function __did_action(hook_name = ''){
+	return wp.hooks.didAction(hook_name);
+}
+
+/**
+ * @return int|void
+ */
+function __did_filter(hook_name = ''){
+	return wp.hooks.didFilter(hook_name);
+}
+
+/**
+ * @return void
+ */
+function __do_action(hook_name = '', ...arg){
+	wp.hooks.doAction(hook_name, ...arg);
 }
 
 /**
@@ -154,6 +196,29 @@ function __enable_document_visibility(){
 }
 
 /**
+ * @return string
+ */
+function __error_url(error){
+ 	if(!error instanceof Error){
+ 		return '';
+ 	}
+ 	if('undefined' === typeof(error.stack)){
+ 		return '';
+ 	}
+ 	var urls = [];
+ 	jQuery.each(error.stack.split("\n"), function(index, value){
+ 		var result = (/(http[s]?:\/\/.*):\d+:\d+/g).exec(value); // array or null
+ 		if(result && result.length > 1){
+ 			urls.push(result[1]);
+ 		}
+ 	});
+ 	if(urls.length < 2){
+ 		return '';
+ 	}
+	return urls[1];
+}
+
+/**
  * @return object
  */
 function __get_a(url){
@@ -193,6 +258,20 @@ function __get_query_args(url){
 /**
  * @return bool
  */
+function __has_action(hook_name = ''){
+	return wp.hooks.hasAction(hook_name, __namespace());
+}
+
+/**
+ * @return bool
+ */
+function __has_filter(hook_name = ''){
+	return wp.hooks.hasFilter(hook_name, __namespace());
+}
+
+/**
+ * @return bool
+ */
 function __is_false(data){
 	return (-1 < jQuery.inArray(String(data), ['0', 'false', 'off']));
 }
@@ -202,6 +281,15 @@ function __is_false(data){
  */
 function __is_true(data){
 	return (-1 < jQuery.inArray(String(data), ['1', 'on', 'true']));
+}
+
+/**
+ * @return string
+ */
+function __mu_plugins_url(){
+	var object_name = __prefix('object');
+	var object = 'undefined' !== typeof(window[object_name]) ? window[object_name] : {};
+    return 'undefined' !== typeof(object.mu_plugins_url) ? object.mu_plugins_url : '';
 }
 
 /**
@@ -238,6 +326,46 @@ function __parse_url(url, component){
 	} else {
 		return '';
 	}
+}
+
+/**
+ * @return string
+ */
+function __plugin_folder(file = ''){
+ 	var fake_function = null, folder = '', mu_plugins_url = __mu_plugins_url(), path = '', plugins_url = __plugins_url();
+ 	if(!file){
+ 		try {
+ 			fake_function();
+ 		} catch(error){
+ 			file = __error_url(error);
+ 		}
+ 	} else if(file instanceof Error){
+ 		file = __error_url(file);
+ 	}
+ 	if(!file){
+ 		return '';
+ 	}
+ 	if(0 === file.indexOf(mu_plugins_url)){
+         path = file.substr(mu_plugins_url.length, file.length - 1);
+     } else if(0 === file.indexOf(plugins_url)){
+         path = file.substr(plugins_url.length, file.length - 1);
+     } else {
+ 		return '';
+ 	}
+ 	folder = path.split('/', 3);
+ 	if(folder.length < 3){
+ 		return '';
+ 	}
+ 	return folder[1];
+}
+
+/**
+ * @return string
+ */
+function __plugins_url(){
+	var object_name = __prefix('object');
+	var object = 'undefined' !== typeof(window[object_name]) ? window[object_name] : {};
+    return 'undefined' !== typeof(object.plugins_url) ? object.plugins_url : '';
 }
 
 /**
@@ -279,6 +407,29 @@ function __rem_to_px(count){
 }
 
 /**
+ * @return int|void
+ */
+function __remove_action(hook_name = ''){
+	return wp.hooks.removeAction(hook_name, __namespace());
+}
+
+/**
+ * @return int|void
+ */
+function __remove_filter(hook_name = ''){
+	return wp.hooks.removeFilter(hook_name, __namespace());
+}
+
+/**
+ * @return string
+ */
+function __site_url(){
+	var object_name = __prefix('object');
+	var object = 'undefined' !== typeof(window[object_name]) ? window[object_name] : {};
+    return 'undefined' !== typeof(object.site_url) ? object.site_url : '';
+}
+
+/**
  * This function assumes that the slug value is a valid class name.
  *
  * @return string
@@ -309,174 +460,4 @@ function __slug(str = '', slug = '--'){ // Hardcoded.
  */
 function __test(){
 	console.log('Hello, World!');
-}
-
-
-
-
-
-/**
- * @return void
- */
-function __add_action(hook_name = '', callback = null, priority = 10){
-	wp.hooks.addAction(hook_name, __namespace(), callback, priority);
-}
-
-/**
- * @return void
- */
-function __add_filter(hook_name = '', callback = null, priority = 10){
-	wp.hooks.addFilter(hook_name, __namespace(), callback, priority);
-}
-
-/**
- * @return mixed
- */
-function __apply_filters(hook_name = '', value = null, ...arg){
-	return wp.hooks.applyFilters(hook_name, value, ...arg);
-}
-
-/**
- * @return int|void
- */
-function __did_action(hook_name = ''){
-	return wp.hooks.didAction(hook_name);
-}
-
-/**
- * @return int|void
- */
-function __did_filter(hook_name = ''){
-	return wp.hooks.didFilter(hook_name);
-}
-
-/**
- * @return void
- */
-function __do_action(hook_name = '', ...arg){
-	wp.hooks.doAction(hook_name, ...arg);
-}
-
-/**
- * @return bool
- */
-function __has_action(hook_name = ''){
-	return wp.hooks.hasAction(hook_name, __namespace());
-}
-
-/**
- * @return bool
- */
-function __has_filter(hook_name = ''){
-	return wp.hooks.hasFilter(hook_name, __namespace());
-}
-
-/**
- * @return int|void
- */
-function __remove_action(hook_name = ''){
-	return wp.hooks.removeAction(hook_name, __namespace());
-}
-
-/**
- * @return int|void
- */
-function __remove_filter(hook_name = ''){
-	return wp.hooks.removeFilter(hook_name, __namespace());
-}
-
-/**
- * @return string
- */
-function __mu_plugin_url(){
-	var object_name = __prefix('object');
-	var object = 'undefined' !== typeof(window[object_name]) ? window[object_name] : {};
-    return 'undefined' !== typeof(object.mu_plugin_url) ? object.mu_plugin_url : '';
-}
-
-/**
- * @return string
- */
-function __plugin_url(){
-	var object_name = __prefix('object');
-	var object = 'undefined' !== typeof(window[object_name]) ? window[object_name] : {};
-    return 'undefined' !== typeof(object.plugin_url) ? object.plugin_url : '';
-}
-
-/**
- * @return string
- */
-function __site_url(){
-	var object_name = __prefix('object');
-	var object = 'undefined' !== typeof(window[object_name]) ? window[object_name] : {};
-    return 'undefined' !== typeof(object.site_url) ? object.site_url : '';
-}
-
-/**
- * @return string
- */
-/*function __site_url(){
-	var object_name = __prefix('object');
-	var object = 'undefined' !== typeof(window[object_name]) ? window[object_name] : {};
-    return 'undefined' !== typeof(object.site_url) ? object.site_url : '';
-}*/
-
-/**
- * @return string
- */
-/*function __preg_quote(string){
-  return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); // $& means the whole matched string
-}*/
-
-/**
- * @return string
- */
-function __err_to_file(err){
- 	var file = '';
- 	if(!err instanceof Error){
- 		return file;
- 	}
- 	if('undefined' === typeof(err.stack)){
- 		return file;
- 	}
- 	var urls = [];
- 	jQuery.each(err.stack.split("\n"), function(index, value){
- 		var url = (/(http[s]?:\/\/.*):\d+:\d+/m).exec(value); // array or null
- 		if(url && url.length > 1){
- 			urls.push(url[1]);
- 		}
- 	});
- 	if(urls.length < 2){
- 		return file;
- 	}
-	return urls[1];
-}
-
-/**
- * @return string
- */
-function __plugin_folder(file = ''){
- 	var fake_function = null, folder = '', mu_plugin_url = __mu_plugin_url(), path = '', plugin_url = __plugin_url();
- 	if(!file){
- 		try {
- 			fake_function();
- 		} catch(err){
- 			file = __err_to_file(err);
- 		}
- 	}
- 	if(!file){
- 		return '';
- 	}
- 	if(0 === file.indexOf(mu_plugin_url)){
-         path = file.substr(mu_plugin_url.length, file.length - 1);
-     } else if(0 === file.indexOf(plugin_url)){
-         path = file.substr(plugin_url.length, file.length - 1);
-     } else {
- 		return '';
- 	}
- 	folder = path.split('/', 3);
- 	if(folder.length < 3){
- 		return '';
- 	}
- 	return folder[1];
 }

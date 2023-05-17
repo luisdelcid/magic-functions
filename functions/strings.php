@@ -10,14 +10,14 @@ function __base64_urldecode($data = '', $strict = false){
 /**
  * @return string
  */
-public function __base64_urlencode($data = ''){
+function __base64_urlencode($data = ''){
 	return rtrim(strtr(base64_encode($data), '+/', '-_'), '=');
 }
 
 /**
  * @return string
  */
-public function __canonicalize($key = ''){
+function __canonicalize($key = ''){
 	$key = sanitize_title($key);
 	$key = str_replace('-', '_', $key);
 	return $key;

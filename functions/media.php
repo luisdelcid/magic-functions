@@ -1,6 +1,31 @@
 <?php
 
 /**
+ * @return void
+ */
+function __add_image_size($name = '', $width = 0, $height = 0, $crop = false){
+	$image_sizes = get_intermediate_image_sizes();
+	$size = sanitize_title($name);
+	if(in_array($size, $image_sizes)){
+		return;
+	}
+	$image_sizes = (array) __get_cache('image_sizes', []);
+	$image_sizes[$size] = $name;
+	__set_cache('image_sizes', $image_sizes);
+	add_image_size($size, $width, $height, $crop);
+	__one('image_size_names_choose', '__maybe_add_custom_image_sizes');
+}
+
+/**
+ * @return void
+ */
+function __add_larger_image_sizes(){
+	__add_image_size('HD', 1280, 1280);
+	__add_image_size('Full HD', 1920, 1920);
+	__add_image_size('4K', 3840, 3840);
+}
+
+/**
  * @return int
  */
 function __attachment_url_to_postid($url = ''){
@@ -110,6 +135,20 @@ function __guid_to_postid($guid = '', $check_rewrite_rules = false){
 		return url_to_postid($guid);
 	}
 	return 0;
+}
+
+/**
+ * @return void
+ */
+function __maybe_add_custom_image_sizes($sizes){
+    $image_sizes = (array) __get_cache('image_sizes', []);
+	if(!$image_sizes){
+		return;
+	}
+	foreach($image_sizes as $size => $name){
+		$sizes[$size] = $name;
+	}
+	return $sizes;
 }
 
 /**

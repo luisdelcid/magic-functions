@@ -21,3 +21,4 @@ foreach(glob(plugin_dir_path(__FILE__) . 'functions/*.php') as $file){
 }
 __enqueue_functions();
 __include_theme_functions();
+//__plugin_update_check('https://magicfunctions.com/', __FILE__);

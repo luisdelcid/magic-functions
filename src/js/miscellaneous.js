@@ -111,7 +111,7 @@ function __apply_filters(hook_name = '', value = null, ...arg){
 /**
  * @return array
  */
-__current_utm(){
+function __current_utm(){
 	var object_name = __prefix('utm');
     return 'undefined' !== typeof(window[object_name]) ? window[object_name] : {};
 }

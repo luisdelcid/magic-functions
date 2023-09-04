@@ -296,7 +296,7 @@ function __mu_plugins_url(){
  * @return string
  */
 function __namespace(){
-    return 'luisdelcid/magic-functions/__'; // Hardcoded. The unique namespace identifying the callback in the form `vendor/plugin/function`.
+    return 'luisdelcid/magicfunctions/__'; // Hardcoded. The unique namespace identifying the callback in the form `vendor/plugin/function`.
 }
 
 /**

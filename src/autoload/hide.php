@@ -3,6 +3,78 @@
 /**
  * @return void
  */
+function __add_hiding_rule($args = []){
+    if(is_multisite()){
+		return; // Is not for WordPress MU networks.
+	}
+	$pairs = [
+        'capability' => '',
+        'exclude' => [],
+        'file' => '',
+		'subdir' => '',
+        'type' => 0,
+	];
+    $args = shortcode_atts($pairs, $args);
+	$md5 = __md5($args);
+    if(__isset_array_cache('hide_uploads_subdir', $md5)){
+        return; // Prevent adding rule when already added.
+    }
+    __set_array_cache('hide_uploads_subdir', $md5, $args);
+	$uploads_use_yearmonth_folders = false;
+	$subdir = ltrim(untrailingslashit($args['subdir']), '/');
+	if($subdir){
+		$subdir = '/(' . $subdir . ')';
+	} else {
+		if(get_option('uploads_use_yearmonth_folders')){
+			$subdir = '/(\d{4})/(\d{2})';
+			$uploads_use_yearmonth_folders = true;
+		} else {
+			$subdir = '';
+		}
+	}
+	$upload_dir = wp_get_upload_dir();
+	if($upload_dir['error']){
+		return; // $upload_dir['error']
+	}
+    $path = plugin_dir_path(dirname(__FILE__)) . 'php/readfile.php'; // Hardcoded.
+	$tmp = str_replace(wp_normalize_path(ABSPATH), '', wp_normalize_path($path));
+	$parts = explode('/', $tmp);
+	$levels = count($parts);
+	$query = __dir_to_url($path);
+	$regex = $upload_dir['baseurl'] . $subdir. '/(.+)';
+	if($uploads_use_yearmonth_folders){
+		$atts['yyyy'] = '$1';
+		$atts['mm'] = '$2';
+		$atts['file'] = '$3';
+	} else {
+		$atts['subdir'] = '$1';
+		$atts['file'] = '$2';
+	}
+	$atts['levels'] = $levels;
+    $atts['md5'] = $md5;
+    switch($args['type']){
+        case 1:
+            $atts['type'] = 1;
+            break;
+        case 2:
+            $atts['capability'] = $args['capability'];
+            $atts['type'] = 2;
+            break;
+        case 3:
+            $atts['type'] = 3;
+            break;
+        default:
+            return; // __('Invalid object type.')
+    }
+    $option = __prefix('hide_uploads_subdir_exclude_' . $md5);
+    update_option($option, (array) $args['exclude'], 'no');
+	$query = add_query_arg($atts, $query);
+	__add_external_rule($regex, $query, $args['file']);
+}
+
+/**
+ * @return void
+ */
 function __hide_the_dashboard($capability = 'edit_posts', $location = ''){
     __set_cache('hide_the_dashboard', [
         'capability' => $capability,
@@ -67,58 +139,50 @@ function __hide_the_rest_api($capability = 'read'){
 /**
  * @return void
  */
-function __hide_uploads_subdir($subdir = '', $file = ''){
-    if(is_multisite()){
-		return;
+function __hide_uploads_subdir($subdir = '', $exclude = [], $file = ''){
+    $args = [
+        'exclude' => $exclude,
+        'subdir' => $subdir,
+        'type' => 1,
+    ];
+    if(!$file){
+		$file = __caller_file();
 	}
-	$args = [
-		'file' => '',
-		'subdir' => $subdir,
-	];
-	if($file){
-		$plugin_file = __plugin_file($file);
-		if($plugin_file){
-			$args['file'] = $plugin_file;
-		}
+    $args['file'] = $file;
+    return __add_hiding_rule($args);
+}
+
+/**
+ * @return void
+ */
+function __hide_uploads_subdir_by_capability($subdir = '', $capability = 'read', $exclude = [], $file = ''){
+    $args = [
+        'capability' => $capability,
+        'exclude' => $exclude,
+        'subdir' => $subdir,
+        'type' => 2,
+    ];
+    if(!$file){
+		$file = __caller_file();
 	}
-	$md5 = __md5($args);
-    if(__isset_array_cache('hide_uploads_subdir', $md5)){
-        return;
-    }
-    __set_array_cache('hide_uploads_subdir', $md5, $args);
-	$uploads_use_yearmonth_folders = false;
-	$subdir = ltrim(untrailingslashit($subdir), '/');
-	if($subdir){
-		$subdir = '/(' . $subdir . ')';
-	} else {
-		if(get_option('uploads_use_yearmonth_folders')){
-			$subdir = '/(\d{4})/(\d{2})';
-			$uploads_use_yearmonth_folders = true;
-		} else {
-			$subdir = '';
-		}
+    $args['file'] = $file;
+    return __add_hiding_rule($args);
+}
+
+/**
+ * @return void
+ */
+function __hide_uploads_subdir_by_status($subdir = '', $exclude = [], $file = ''){
+    $args = [
+        'exclude' => $exclude,
+        'subdir' => $subdir,
+        'type' => 3,
+    ];
+    if(!$file){
+		$file = __caller_file();
 	}
-	$upload_dir = wp_get_upload_dir();
-	if($upload_dir['error']){
-		return __error($upload_dir['error']);
-	}
-    $path = plugin_dir_path(dirname(__FILE__)) . 'php/readfile.php'; // Hardcoded.
-	$tmp = str_replace(wp_normalize_path(ABSPATH), '', wp_normalize_path($path));
-	$parts = explode('/', $tmp);
-	$levels = count($parts);
-	$query = __dir_to_url($path);
-	$regex = $upload_dir['baseurl'] . $subdir. '/(.+)';
-	if($uploads_use_yearmonth_folders){
-		$atts['yyyy'] = '$1';
-		$atts['mm'] = '$2';
-		$atts['file'] = '$3';
-	} else {
-		$atts['subdir'] = '$1';
-		$atts['file'] = '$2';
-	}
-	$atts['levels'] = $levels;
-	$query = add_query_arg($atts, $query);
-	__add_external_rule($regex, $query, $file);
+    $args['file'] = $file;
+    return __add_hiding_rule($args);
 }
 
 /**

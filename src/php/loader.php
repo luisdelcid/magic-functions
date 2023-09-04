@@ -12,7 +12,7 @@ class __Loader {
 	private static function content(){
 		$author_name = self::$plugin_data['Author'];
 		$author_url = self::$plugin_data['AuthorURI'];
-		$init_file = self::$loader_data['init_file'];
+		$autoload = self::$loader_data['autoload'];
 		$loader_hook = self::$loader_data['hook_name'];
 		$loader_name = self::$loader_data['name'];
 		$plugin_basename = self::$loader_data['plugin_basename'];
@@ -32,8 +32,8 @@ Plugin URI: $plugin_url
 Version: 1.0.0
 */
 
-if(defined('ABSPATH') and file_exists(trailingslashit(WP_PLUGIN_DIR) . '$plugin_basename') and file_exists(trailingslashit(WP_PLUGIN_DIR) . '$init_file') and in_array('$plugin_basename', (array) get_option('active_plugins')) or (function_exists('get_site_option') and array_key_exists('$plugin_basename', (array) get_site_option('active_sitewide_plugins')))){
-	require_once(trailingslashit(WP_PLUGIN_DIR) . '$init_file');
+if(defined('ABSPATH') and file_exists(trailingslashit(WP_PLUGIN_DIR) . '$plugin_basename') and file_exists(trailingslashit(WP_PLUGIN_DIR) . '$autoload') and (in_array('$plugin_basename', (array) get_option('active_plugins')) or (function_exists('get_site_option') and array_key_exists('$plugin_basename', (array) get_site_option('active_sitewide_plugins'))))){
+	require_once(trailingslashit(WP_PLUGIN_DIR) . '$autoload');
 	do_action('$loader_hook');
 }
 
@@ -144,9 +144,9 @@ EOF;
         $plugin_data = get_plugin_data($file, false, false);
 		$plugin_slug = wp_basename(dirname($file));
 		self::$loader_data = [
+			'autoload' => $plugin_slug . '/src/php/autoload.php', // Hardcoded.
 			'filename' => $plugin_slug . '-loader.php',
 			'hook_name' => str_replace('-', '_', $plugin_slug) . '_loaded',
-            'init_file' => $plugin_slug . '/src/php/autoload.php', // Hardcoded.
 			'name' => $plugin_data['Name'] . ' &#8212; Loader',
             'plugin_basename' => plugin_basename($file),
 		];

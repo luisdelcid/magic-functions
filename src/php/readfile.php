@@ -23,7 +23,8 @@ $post_id = __attachment_file_to_postid($file);
 if(!$post_id){
     __404($file);
 }
-$exclude = (array) get_option('magic_functions_hide_uploads_subdir_exclude_' . $_GET['md5'], []); // Hardcoded.
+$option = __prefix('hide_uploads_subdir_exclude_' . $_GET['md5']);
+$exclude = (array) get_option($option, []);
 if($exclude and in_array($post_id, $exclude)){
 	__serve_file($file);
 }

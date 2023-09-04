@@ -63,6 +63,14 @@ function __attachment_url_to_postid($url = ''){
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+function __canonicalize($key = ''){
+	$key = sanitize_title($key);
+	$key = str_replace('-', '_', $key);
+	return $key;
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 function __current_user_can($capability = ''){
     $user_id = __get_current_user_id();
     return __user_can($user_id, $capability);
@@ -164,6 +172,27 @@ function __guid_to_postid($guid = ''){
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+function __prefix($str = '', $prefix = 'magic_functions'){ // Hardcoded.
+	if(!$prefix){
+		return $str;
+	}
+	$prefix = str_replace('\\', '_', $prefix); // fix namespaces
+	$prefix = __canonicalize($prefix);
+    if(false === $str){
+        return $prefix;
+    }
+    if($prefix === $str){
+        return $str;
+    }
+    $prefix .= '_';
+    if(0 === strpos($str, $prefix)){
+        return $str;
+    }
+    return $prefix . $str;
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 function __serve_file($file = ''){
     $mime = wp_check_filetype($file);
 	if(false === $mime['type'] and function_exists('mime_content_type')){
@@ -181,6 +210,31 @@ function __serve_file($file = ''){
 	readfile($file); // If we made it this far, just serve the file.
 	flush();
 	die;
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+function __slug($str = '', $slug = 'magic-functions'){ // Hardcoded.
+	if(!$slug){
+		return $str;
+	}
+	$slug = str_replace('_', '-', $slug); // fix canonicalized
+    $slug = str_replace('\\', '-', $slug); // fix namespaces
+	$slug = sanitize_title($slug);
+	if(true === $str){
+		return $slug . '-';
+	}
+    if(!$str){
+        return $slug;
+    }
+    if($slug === $str){
+        return $str;
+    }
+    $slug .= '-';
+    if(0 === strpos($str, $slug)){
+        return $str;
+    }
+    return $slug . $str;
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -239,6 +239,13 @@ function __slug($str = '', $slug = 'magic-functions'){ // Hardcoded.
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+function __test(){
+    status_header(500);
+	die('Hello, World!');
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 function __user_can($user_id = 0, $capability = ''){
     global $wpdb;
     $query = $wpdb->prepare("SELECT meta_value FROM $wpdb->usermeta WHERE user_id = %d AND meta_key = %s LIMIT 1", $user_id, $wpdb->prefix . 'capabilities');

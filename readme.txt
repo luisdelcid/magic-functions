@@ -5,7 +5,7 @@ License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 Requires at least: 5.6
 Requires PHP: 5.6
-Stable tag: 0.9.2.8
+Stable tag: 0.9.2.9
 Tags: magic, functions
 Tested up to: 6.3.1
 
@@ -17,7 +17,7 @@ A collection of magic functions for WordPress, plugins and themes.
 
 == Installation ==
 
-= Plugins =
+= For plugins =
 
 Add the following code to the main plugin file:
 
@@ -25,17 +25,17 @@ Add the following code to the main plugin file:
     if(!did_action('magic_loaded')){
         return;
     }
-    // Do your magic trick here.
+    // Do your magic here.
 });`
 
-= Themes =
+= For themes =
 
-Create a new file named `magic-functions.php` and do your magic trick there.
+Create a new file named `magic-functions.php` and do your magic there.
 
 Or add the following code to the functions.php file:
 
 `if(did_action('magic_loaded')){
-    // Do your magic trick here.
+    // Do your magic here.
 }`
 
 == Changelog ==

@@ -5,9 +5,9 @@
  */
 function __admin_search_post_meta(){
 	__set_cache('admin_search_post_meta', true);
-	__add_filter_once('posts_groupby', '__posts_groupby', 10, 2);
-    __add_filter_once('posts_join', '__posts_join', 10, 2);
-    __add_filter_once('posts_where', '__posts_where', 10, 2);
+	__add_filter_once('posts_groupby', '__maybe_posts_groupby', 10, 2);
+    __add_filter_once('posts_join', '__maybe_posts_join', 10, 2);
+    __add_filter_once('posts_where', '__maybe_posts_where', 10, 2);
 }
 
 /**
@@ -15,13 +15,13 @@ function __admin_search_post_meta(){
  */
 function __admin_search_user_meta(){
 	__set_cache('admin_search_user_meta', true);
-    __add_filter_once('users_pre_query', '__users_pre_query', 10, 2);
+    __add_filter_once('users_pre_query', '__maybe_users_pre_query', 10, 2);
 }
 
 /**
  * @return string
  */
-function __posts_groupby($groupby, $query){
+function __maybe_posts_groupby($groupby, $query){
 	global $pagenow, $wpdb;
     $admin_search_post_meta = (bool) __get_cache('admin_search_post_meta', false);
 	if(!$admin_search_post_meta){
@@ -42,7 +42,7 @@ function __posts_groupby($groupby, $query){
 /**
  * @return string
  */
-function __posts_join($join, $query){
+function __maybe_posts_join($join, $query){
     global $pagenow, $wpdb;
     $admin_search_post_meta = (bool) __get_cache('admin_search_post_meta', false);
 	if(!$admin_search_post_meta){
@@ -63,7 +63,7 @@ function __posts_join($join, $query){
 /**
  * @return string
  */
-function __posts_where($where, $query){
+function __maybe_posts_where($where, $query){
     global $pagenow, $wpdb;
     $admin_search_post_meta = (bool) __get_cache('admin_search_post_meta', false);
 	if(!$admin_search_post_meta){
@@ -88,7 +88,7 @@ function __posts_where($where, $query){
 /**
  * @return array|null
  */
-function __users_pre_query($results, $query){
+function __maybe_users_pre_query($results, $query){
 	global $pagenow, $wpdb;
     $admin_search_user_meta = (bool) __get_cache('admin_search_user_meta', false);
 	if(!$admin_search_user_meta){

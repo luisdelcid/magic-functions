@@ -5,7 +5,7 @@ License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 Requires at least: 5.6
 Requires PHP: 5.6
-Stable tag: 0.9.3.2
+Stable tag: 0.9.3.3
 Tags: magic, functions
 Tested up to: 6.3.1
 
@@ -36,4 +36,4 @@ Create a new file named `magic-functions.php` and do your magic there or add the
 
 == Changelog ==
 
-For changelog entries, please visit the [GitHub Repository](https://github.com/luisdelcid/magic-functions "Changelog").
+For changelog entries, please visit the [GitHub repository](https://github.com/luisdelcid/magic-functions).

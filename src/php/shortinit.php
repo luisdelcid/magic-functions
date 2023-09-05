@@ -1,14 +1,16 @@
 <?php
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
+/**
+ * @return void
+ */
 function __404(){
     status_header(404);
 	die('404 &#8212; File not found.');
 }
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
+/**
+ * @return int
+ */
 function __attachment_file_to_postid($file = ''){
 	if(!defined('WP_CONTENT_URL')){
 		define('WP_CONTENT_URL', get_option('siteurl') . '/wp-content');
@@ -18,8 +20,9 @@ function __attachment_file_to_postid($file = ''){
     return __attachment_url_to_postid($url);
 }
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
+/**
+ * @return int
+ */
 function __attachment_url_to_postid($url = ''){
     $post_id = __guid_to_postid($url);
     if($post_id){
@@ -61,23 +64,26 @@ function __attachment_url_to_postid($url = ''){
     return 0;
 }
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
+/**
+ * @return string
+ */
 function __canonicalize($key = ''){
 	$key = sanitize_title($key);
 	$key = str_replace('-', '_', $key);
 	return $key;
 }
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
+/**
+ * @return bool
+ */
 function __current_user_can($capability = ''){
     $user_id = __get_current_user_id();
     return __user_can($user_id, $capability);
 }
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
+/**
+ * @return string
+ */
 function __dirname($path = '', $levels = 1){
     $levels = (int) $levels;
     $path = dirname($path);
@@ -89,8 +95,9 @@ function __dirname($path = '', $levels = 1){
     }
 }
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
+/**
+ * @return int
+ */
 function __get_current_user_id(){
     global $wpdb;
     $siteurl = get_option('siteurl');
@@ -113,16 +120,18 @@ function __get_current_user_id(){
     return $user->ID;
 }
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
+/**
+ * @return object
+ */
 function __get_post($post_id = 0){
     global $wpdb;
 	$query = $wpdb->prepare("SELECT * FROM $wpdb->posts WHERE ID = %d", $post_id);
 	return $wpdb->get_row($query);
 }
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
+/**
+ * @return array|null|string
+ */
 function __get_post_meta($post_id = 0, $key = '', $single = false){
     global $wpdb;
     $query = $wpdb->prepare("SELECT meta_value FROM $wpdb->postmeta WHERE post_id = %d AND meta_key = %s", $post_id, $key);
@@ -133,8 +142,9 @@ function __get_post_meta($post_id = 0, $key = '', $single = false){
     }
 }
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
+/**
+ * @return bool|string
+ */
 function __get_post_status($post_id = 0){
 	$post = __get_post($post_id);
 	if(!is_object($post)){
@@ -158,8 +168,9 @@ function __get_post_status($post_id = 0){
 	return $post_status;
 }
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
+/**
+ * @return int
+ */
 function __guid_to_postid($guid = ''){
     global $wpdb;
     $query = $wpdb->prepare("SELECT ID FROM $wpdb->posts WHERE guid = %s", $guid);
@@ -170,8 +181,9 @@ function __guid_to_postid($guid = ''){
     return (int) $post_id;
 }
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
+/**
+ * @return string
+ */
 function __prefix($str = '', $prefix = 'magic_functions'){ // Hardcoded.
 	if(!$prefix){
 		return $str;
@@ -191,8 +203,9 @@ function __prefix($str = '', $prefix = 'magic_functions'){ // Hardcoded.
     return $prefix . $str;
 }
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
+/**
+ * @return void
+ */
 function __serve_file($file = ''){
     $mime = wp_check_filetype($file);
 	if(false === $mime['type'] and function_exists('mime_content_type')){
@@ -212,8 +225,9 @@ function __serve_file($file = ''){
 	die;
 }
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
+/**
+ * @return string
+ */
 function __slug($str = '', $slug = 'magic-functions'){ // Hardcoded.
 	if(!$slug){
 		return $str;
@@ -237,15 +251,17 @@ function __slug($str = '', $slug = 'magic-functions'){ // Hardcoded.
     return $slug . $str;
 }
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
+/**
+ * @return void
+ */
 function __test(){
     status_header(500);
 	die('Hello, World!');
 }
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
+/**
+ * @return bool
+ */
 function __user_can($user_id = 0, $capability = ''){
     global $wpdb;
     $query = $wpdb->prepare("SELECT meta_value FROM $wpdb->usermeta WHERE user_id = %d AND meta_key = %s LIMIT 1", $user_id, $wpdb->prefix . 'capabilities');
@@ -269,5 +285,3 @@ function __user_can($user_id = 0, $capability = ''){
     }
     return in_array($capability, $user_capabilities);
 }
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

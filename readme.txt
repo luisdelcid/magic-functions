@@ -5,7 +5,7 @@ License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 Requires at least: 5.6
 Requires PHP: 5.6
-Stable tag: 0.9.2.4
+Stable tag: 0.9.2.5
 Tags: magic, functions
 Tested up to: 6.3.1
 

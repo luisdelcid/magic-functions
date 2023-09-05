@@ -37,7 +37,7 @@ function __maybe_include_theme_functions(){
     if(!$enqueue_functions){
         return;
     }
-    $file = get_stylesheet_directory() . '/' . __slug('functions.php');
+    $file = get_stylesheet_directory() . '/' . __slug(false) . '.php';
     if(!file_exists($file)){
         return;
     }

@@ -12,13 +12,14 @@ Plugin URI: https://magicfunctions.com/
 Requires at least: 5.6
 Requires PHP: 5.6
 Text Domain: magic-functions
-Version: 0.9.2.9
+Version: 0.9.3
 */
 
 defined('ABSPATH') or die('Hi there! I\'m just a plugin, not much I can do when called directly.');
-require_once(plugin_dir_path(__FILE__) . 'src/php/loader.php');
-__Loader::load(__FILE__);
-if(did_action('magic_functions_loaded')){
-    __enqueue_functions();
-    __plugin_update_check('https://github.com/luisdelcid/magic-functions', __FILE__);
+foreach(glob(plugin_dir_path(__FILE__) . 'src/autoload/*.php') as $magic_file){
+    require_once($magic_file);
 }
+unset($magic_file);
+__enqueue_functions();
+__plugin_update_check('https://github.com/luisdelcid/magic-functions', __FILE__);
+do_action('magic_loaded');

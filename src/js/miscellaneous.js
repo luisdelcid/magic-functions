@@ -509,7 +509,7 @@ function __prefix(str = '', prefix = 'magic_functions'){ // Hardcoded.
     if(!prefix){
 		return '';
 	}
-	prefix = prefix.toLowerCase().replaceAll('\\', '-'); // fix namespaces
+	prefix = prefix.toLowerCase().replaceAll('-', '_').replaceAll('\\', '_'); // fix non-canonicalized and namespaces
     if(false === str){
         return prefix;
     }

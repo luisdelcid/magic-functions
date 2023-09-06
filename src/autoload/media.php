@@ -15,15 +15,6 @@ function __add_image_size($name = '', $width = 0, $height = 0, $crop = false){
 }
 
 /**
- * @return void
- */
-function __add_larger_image_sizes(){
-	__add_image_size('HD', 1280, 1280);
-	__add_image_size('Full HD', 1920, 1920);
-	__add_image_size('4K', 3840, 3840);
-}
-
-/**
  * @return int
  */
 function __attachment_url_to_postid($url = ''){

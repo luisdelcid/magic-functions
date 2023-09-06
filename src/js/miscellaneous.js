@@ -558,7 +558,7 @@ function __remove_filter(hook_name = ''){
 function __remove_plugin_action(hook_name = ''){
 	var file = __caller_file();
 	hook_name = __plugin_prefix(hook_name, file);
-	return wp.hooks.removeAction(hook_name, this.#namespace());
+	return wp.hooks.removeAction(hook_name, __namespace());
 }
 
 /**
@@ -567,7 +567,7 @@ function __remove_plugin_action(hook_name = ''){
 function __remove_plugin_filter(hook_name = ''){
 	var file = __caller_file();
 	hook_name = __plugin_prefix(hook_name, file);
-	return wp.hooks.removeFilter(hook_name, this.#namespace());
+	return wp.hooks.removeFilter(hook_name, __namespace());
 }
 
 /**

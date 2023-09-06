@@ -13,6 +13,24 @@ function __add_filter(hook_name = '', callback = null, priority = 10){
 }
 
 /**
+ * @return void
+ */
+function __add_plugin_action(hook_name = '', callback = null, priority = 10){
+	var file = __caller_file();
+	hook_name = __plugin_prefix(hook_name, file);
+	wp.hooks.addAction(hook_name, __namespace(), callback, priority);
+}
+
+/**
+ * @return void
+ */
+function __add_plugin_filter(hook_name = '', callback = null, priority = 10){
+	var file = __caller_file();
+	hook_name = __plugin_prefix(hook_name, file);
+	wp.hooks.addFilter(hook_name, __namespace(), callback, priority);
+}
+
+/**
  * @return string
  */
 function __add_query_arg(key, value, url){
@@ -109,6 +127,44 @@ function __apply_filters(hook_name = '', value = null, ...arg){
 }
 
 /**
+ * @return mixed
+ */
+function __apply_plugin_filters(hook_name = '', value = null, ...arg){
+	var file = __caller_file();
+	hook_name = __plugin_prefix(hook_name, file);
+	return wp.hooks.applyFilters(hook_name, value, ...arg);
+}
+
+/**
+ * @return string
+ */
+function __caller_file(){
+	var fake_function = null;
+	try {
+		fake_function();
+	} catch(error){
+		if('undefined' === typeof(error.stack)){
+	 		return '';
+	 	}
+		var urls = [], values = error.stack.split("\n");
+		if(values.length < 4){
+			return '';
+		}
+	 	jQuery.each(values, function(index, value){
+	 		var result = (/(http[s]?:\/\/.*):\d+:\d+/g).exec(value); // array or null
+	 		if(result && result.length > 1){
+	 			urls.push(result[1]);
+	 		}
+	 	});
+	 	if(urls.length < 3){
+	 		return '';
+	 	}
+		return urls[2];
+	}
+ 	return '';
+}
+
+/**
  * @return array
  */
 function __current_utm(){
@@ -131,9 +187,36 @@ function __did_filter(hook_name = ''){
 }
 
 /**
+ * @return int|void
+ */
+function __did_plugin_action(hook_name = ''){
+	var file = __caller_file();
+	hook_name = __plugin_prefix(hook_name, file);
+	return wp.hooks.didAction(hook_name);
+}
+
+/**
+ * @return int|void
+ */
+function __did_plugin_filter(hook_name = ''){
+	var file = __caller_file();
+	hook_name = __plugin_prefix(hook_name, file);
+	return wp.hooks.didFilter(hook_name);
+}
+
+/**
  * @return void
  */
 function __do_action(hook_name = '', ...arg){
+	wp.hooks.doAction(hook_name, ...arg);
+}
+
+/**
+ * @return void
+ */
+function __do_plugin_action(hook_name = '', ...arg){
+	var file = __caller_file();
+	hook_name = __plugin_prefix(hook_name, file);
 	wp.hooks.doAction(hook_name, ...arg);
 }
 
@@ -205,8 +288,11 @@ function __error_url(error){
  	if('undefined' === typeof(error.stack)){
  		return '';
  	}
- 	var urls = [];
- 	jQuery.each(error.stack.split("\n"), function(index, value){
+ 	var urls = [], values = error.stack.split("\n");
+	if(values.length < 3){
+		return '';
+	}
+ 	jQuery.each(values, function(index, value){
  		var result = (/(http[s]?:\/\/.*):\d+:\d+/g).exec(value); // array or null
  		if(result && result.length > 1){
  			urls.push(result[1]);
@@ -266,6 +352,24 @@ function __has_action(hook_name = ''){
  * @return bool
  */
 function __has_filter(hook_name = ''){
+	return wp.hooks.hasFilter(hook_name, __namespace());
+}
+
+/**
+ * @return bool
+ */
+function __has_plugin_action(hook_name = ''){
+	var file = __caller_file();
+	hook_name = __plugin_prefix(hook_name, file);
+	return wp.hooks.hasAction(hook_name, __namespace());
+}
+
+/**
+ * @return bool
+ */
+function __has_plugin_filter(hook_name = ''){
+	var file = __caller_file();
+	hook_name = __plugin_prefix(hook_name, file);
 	return wp.hooks.hasFilter(hook_name, __namespace());
 }
 
@@ -362,6 +466,34 @@ function __plugin_folder(file = ''){
 /**
  * @return string
  */
+function __plugin_prefix(str = '', file = ''){
+	if(!file){
+		file = __caller_file();
+	}
+	var plugin_folder = __plugin_folder(file);
+	if(!plugin_folder){
+		return '';
+	}
+	return __prefix(str, plugin_folder);
+}
+
+/**
+ * @return string
+ */
+function __plugin_slug(str = '', file = ''){
+	if(!file){
+		file = __caller_file();
+	}
+	var plugin_folder = __plugin_folder(file);
+	if(!plugin_folder){
+		return '';
+	}
+	return __slug(str, plugin_folder);
+}
+
+/**
+ * @return string
+ */
 function __plugins_url(){
 	var object_name = __prefix('l10n');
 	var object = 'undefined' !== typeof(window[object_name]) ? window[object_name] : {};
@@ -418,6 +550,24 @@ function __remove_action(hook_name = ''){
  */
 function __remove_filter(hook_name = ''){
 	return wp.hooks.removeFilter(hook_name, __namespace());
+}
+
+/**
+ * @return int|void
+ */
+function __remove_plugin_action(hook_name = ''){
+	var file = __caller_file();
+	hook_name = __plugin_prefix(hook_name, file);
+	return wp.hooks.removeAction(hook_name, this.#namespace());
+}
+
+/**
+ * @return int|void
+ */
+function __remove_plugin_filter(hook_name = ''){
+	var file = __caller_file();
+	hook_name = __plugin_prefix(hook_name, file);
+	return wp.hooks.removeFilter(hook_name, this.#namespace());
 }
 
 /**

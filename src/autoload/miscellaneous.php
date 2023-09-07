@@ -102,6 +102,13 @@ function __format_function($function_name = '', $args = []){
 /**
  * @return bool
  */
+function __go_to($str = ''){
+	return trim(str_replace('&larr;', '', sprintf(_x('&larr; Go to %s', 'site'), $str)));
+}
+
+/**
+ * @return bool
+ */
 function __is_doing_heartbeat(){
 	return (wp_doing_ajax() and isset($_POST['action']) and 'heartbeat' === $_POST['action']);
 }

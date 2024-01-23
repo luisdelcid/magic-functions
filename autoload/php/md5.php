@@ -24,7 +24,7 @@ function __md5($data = ''){
  */
 function __md5_closure($data = null, $spl_object_hash = false){
 	if(!$data instanceof \Closure){
-		return __error(__('Invalid object type.'));
+		return __error(translate('Invalid object type.'));
 	}
 	$wrapper = __serializable_closure($data);
 	if(is_wp_error($wrapper)){

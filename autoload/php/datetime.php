@@ -1,9 +1,15 @@
 <?php
 
 /**
+ * Alias for current_time.
+ *
+ * Differs from current_time in that it will always return a string.
+ *
+ * If 'offset_or_tz' parameter is an empty string, the output is adjusted with the GMT offset in the WordPress option.
+ *
  * @return string
  */
-function __current_time($type = 'U', $offset_or_tz = ''){ // If $offset_or_tz is an empty string, the output is adjusted with the GMT offset in the WordPress option.
+function __current_time($type = 'U', $offset_or_tz = ''){
 	if('timestamp' === $type){
 		$type = 'U';
 	}
@@ -12,7 +18,7 @@ function __current_time($type = 'U', $offset_or_tz = ''){ // If $offset_or_tz is
 	}
 	$timezone = $offset_or_tz ? __timezone($offset_or_tz) : wp_timezone();
 	$datetime = new \DateTime('now', $timezone);
-	return $datetime->format($type); // Differs from current_time in that it will always return a string.
+	return $datetime->format($type);
 }
 
 /**
@@ -38,16 +44,19 @@ function __is_mysql_date($subject = ''){
 }
 
 /**
+ * @param string $offset_or_tz Optional. Default GMT offset or timezone string. Must be either a valid offset (-12 to 14) or a valid timezone string.
+ *
  * @return array
  */
-function __offset_or_tz($offset_or_tz = ''){ // Default GMT offset or timezone string. Must be either a valid offset (-12 to 14) or a valid timezone string.
+function __offset_or_tz($offset_or_tz = ''){
 	if(is_numeric($offset_or_tz)){
 		return [
 			'gmt_offset' => $offset_or_tz,
 			'timezone_string' => '',
 		];
 	}
-	if(preg_match('/^UTC[+-]/', $offset_or_tz)){ // Map UTC+- timezones to gmt_offsets and set timezone_string to empty.
+	// Map UTC+- timezones to gmt_offsets and set timezone_string to empty.
+	if(preg_match('/^UTC[+-]/', $offset_or_tz)){
 		return [
 			'gmt_offset' => (int) preg_replace('/UTC\+?/', '', $offset_or_tz),
 			'timezone_string' => '',

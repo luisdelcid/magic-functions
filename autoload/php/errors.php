@@ -9,9 +9,9 @@ function __error($message = '', $data = ''){
 		$message = $message->get_error_message();
 	}
 	if(empty($message)){
-		$message = __('Something went wrong.');
+		$message = translate('Something went wrong.');
 	}
-	$code = __prefix('error');
+	$code = __str_prefix('error');
 	return new \WP_Error($code, $message, $data);
 }
 
@@ -27,20 +27,20 @@ function __exit_with_error($message = '', $title = '', $args = []){
 		}
 	}
 	if(!$message){
-		$message = __('Error');
+		$message = translate('Error');
 	}
 	if(!$title){
-		$title = __('Something went wrong.');
+		$title = translate('Something went wrong.');
 	}
 	$html = '<h1>' . $title . '</h1>';
 	$html .= '<p>';
 	$html .= rtrim($message, '.') . '.';
 	$referer = wp_get_referer();
 	if($referer){
-		$back = __('Go back');
+		$back = translate('Go back');
 		$html_link = sprintf('<a href="%s">%s</a>', esc_url($referer), $back);
 	} else {
-		$back = sprintf(_x('&larr; Go to %s', 'site'), get_bloginfo('title', 'display'));
+		$back = sprintf(translate_with_gettext_context('&larr; Go to %s', 'site'), get_bloginfo('title', 'display'));
 		$back = str_replace('&larr;', '', $back);
 		$back = trim($back);
 		$html_link = sprintf('<a href="%s">%s</a>', esc_url(home_url('/')), $back);

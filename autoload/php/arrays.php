@@ -22,14 +22,14 @@ function __is_associative_array($array = []){
 	if(!is_array($array)){
 		return false;
 	}
-	if(!$array){
+	if(empty($array)){
 		return false;
 	}
 	$end = count($array) - 1;
 	if(array_keys($array) === range(0, $end)){
 		return false;
 	}
-	return true;
+	return $array;
 }
 
 /**

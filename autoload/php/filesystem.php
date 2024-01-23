@@ -18,16 +18,18 @@ function __check_upload_dir($path = ''){
 	}
 	$basedir = wp_normalize_path($upload_dir['basedir']);
 	if(0 !== strpos($path, $basedir)){
-		$error_msg = sprintf(__('Unable to locate needed folder (%s).'), __('The uploads directory'));
+		$error_msg = sprintf(translate('Unable to locate needed folder (%s).'), translate('The uploads directory'));
 		return __error($error_msg);
 	}
 	return $path;
 }
 
 /**
+ * Alias for WP_REST_Attachments_Controller::check_upload_size.
+ *
  * @return bool|WP_Error
  */
-function __check_upload_size($file_size = 0){ // WP_REST_Attachments_Controller::check_upload_size(). WordPress/wp-includes/rest-api/endpoints/class-wp-rest-attachments-controller.php
+function __check_upload_size($file_size = 0){
 	if(!is_multisite()){
 		return true;
 	}
@@ -36,18 +38,18 @@ function __check_upload_size($file_size = 0){ // WP_REST_Attachments_Controller:
 	}
 	$space_left = get_upload_space_available();
 	if($space_left < $file_size){
-		$error_msg = sprintf(__('Not enough space to upload. %s KB needed.'), number_format(($file_size - $space_left) / KB_IN_BYTES));
+		$error_msg = sprintf(translate('Not enough space to upload. %s KB needed.'), number_format(($file_size - $space_left) / KB_IN_BYTES));
 		return __error($error_msg);
 	}
 	if($file_size > (KB_IN_BYTES * get_site_option('fileupload_maxk', 1500))){
-		$error_msg = sprintf(__('This file is too big. Files must be less than %s KB in size.'), get_site_option('fileupload_maxk', 1500));
+		$error_msg = sprintf(translate('This file is too big. Files must be less than %s KB in size.'), get_site_option('fileupload_maxk', 1500));
 		return __error($error_msg);
 	}
 	if(!function_exists('upload_is_user_over_quota')){
 		require_once(ABSPATH . 'wp-admin/includes/ms.php'); // Include multisite admin functions to get access to upload_is_user_over_quota().
 	}
 	if(upload_is_user_over_quota(false)){
-		$error_msg = __('You have used your space quota. Please delete files before uploading.');
+		$error_msg = translate('You have used your space quota. Please delete files before uploading.');
 		return __error($error_msg);
 	}
 	return true;
@@ -69,7 +71,7 @@ function __download_dir(){
 		return __error($upload_dir['error']);
 	}
 	$path = $upload_dir['basedir'];
-    $dir = __slug('downloads');
+    $dir = __str_slug('downloads');
 	$download_dir = $path . '/' . $dir;
 	return __mkdir_p($download_dir);
 }
@@ -83,13 +85,13 @@ function __filesystem(){
 		require_once(ABSPATH . 'wp-admin/includes/file.php');
 	}
 	if('direct' !== get_filesystem_method()){
-		return __error(__('Could not access filesystem.')); // TODO: determine the best way to support other filesystem methods.
+		return __error(translate('Could not access filesystem.')); // TODO: determine the best way to support other filesystem methods.
 	}
 	if($wp_filesystem instanceof \WP_Filesystem_Base){
 		return $wp_filesystem;
 	}
 	if(!WP_Filesystem()){
-		return __error(__('Filesystem error.'));
+		return __error(translate('Filesystem error.'));
 	}
 	return $wp_filesystem;
 }
@@ -114,16 +116,16 @@ function __get_memory_size(){
  */
 function __handle_file($file = [], $dir = '', $mimes = null){
 	if(empty($file)){
-		$error_msg = __('No data supplied.');
+		$error_msg = translate('No data supplied.');
 		return __error($error_msg);
 	}
 	if(!is_array($file)){
 		if(!is_scalar($file)){
-			$error_msg = __('Invalid data provided.');
+			$error_msg = translate('Invalid data provided.');
 			return __error($error_msg);
 		}
 		if(empty($_FILES[$file])){
-			$error_msg = __('File does not exist! Please double check the name and try again.');
+			$error_msg = translate('File does not exist! Please double check the name and try again.');
 			return __error($error_msg);
 		}
 		$file = $_FILES[$file];
@@ -155,7 +157,7 @@ function __handle_file($file = [], $dir = '', $mimes = null){
 function __handle_files($files = [], $dir = '', $mimes = null){
 	if(empty($files)){
 		if(empty($_FILES)){
-			$error_msg = __('No data supplied.');
+			$error_msg = translate('No data supplied.');
 			return __error($error_msg);
 		}
 		$files = $_FILES;
@@ -172,11 +174,11 @@ function __handle_files($files = [], $dir = '', $mimes = null){
  */
 function __handle_upload($file = [], $dir = '', $mimes = null){
 	if(!empty($dir) and (!@is_dir($dir) or !wp_is_writable($dir))){
-		$error_msg =  __('Destination directory for file streaming does not exist or is not writable.');
+		$error_msg =  translate('Destination directory for file streaming does not exist or is not writable.');
 		return __error($error_msg);
 	}
 	if(empty($file)){
-		$error_msg = __('No data supplied.');
+		$error_msg = translate('No data supplied.');
 		return __error($error_msg);
 	}
 	$file = shortcode_atts([
@@ -223,7 +225,7 @@ function __handle_upload($file = [], $dir = '', $mimes = null){
 	$move_new_file = @move_uploaded_file($file['tmp_name'], $new_file);
 	if(false === $move_new_file){
 		$error_path = str_replace(ABSPATH, '', $dir);
-		$error_msg = sprintf(__('The uploaded file could not be moved to %s.'), $error_path);
+		$error_msg = sprintf(translate('The uploaded file could not be moved to %s.'), $error_path);
 		return __error($error_msg);
 	}
 	$stat = stat(dirname($new_file));
@@ -248,15 +250,24 @@ function __is_extension_allowed($extension = ''){
 }
 
 /**
+ * Alias for wp_mkdir_p.
+ *
+ * Differs from wp_mkdir_p in that it will return an error if path wasn't created.
+ *
  * @return string|WP_Error
  */
 function __mkdir_p($target = ''){
+	$key = md5($target);
+	if(__isset_array_cache('mkdir_p', $key)){
+		return (string) __get_array_cache($key, '');
+	}
 	if(!wp_mkdir_p($target)){
-		return __error(__('Could not create directory.'));
+		return __error(translate('Could not create directory.'));
 	}
 	if(!wp_is_writable($target)){
-		return __error(__('Destination directory for file streaming does not exist or is not writable.'));
+		return __error(translate('Destination directory for file streaming does not exist or is not writable.'));
 	}
+	__set_array_cache('mkdir_p', $key, $target);
 	return $target;
 }
 
@@ -288,18 +299,18 @@ function __read_file_chunk($handle = null, $chunk_size = 0, $chunk_lenght = 0){
 function __test_error($error = 0){ // A successful upload will pass this test.
 	$upload_error_strings = [
 		false,
-		sprintf(__('The uploaded file exceeds the %1$s directive in %2$s.'), 'upload_max_filesize', 'php.ini'),
-		sprintf(__('The uploaded file exceeds the %s directive that was specified in the HTML form.'), 'MAX_FILE_SIZE'),
-		__('The uploaded file was only partially uploaded.'),
-		__('No file was uploaded.'),
+		sprintf(translate('The uploaded file exceeds the %1$s directive in %2$s.'), 'upload_max_filesize', 'php.ini'),
+		sprintf(translate('The uploaded file exceeds the %s directive that was specified in the HTML form.'), 'MAX_FILE_SIZE'),
+		translate('The uploaded file was only partially uploaded.'),
+		translate('No file was uploaded.'),
 		'',
-		__('Missing a temporary folder.'),
-		__('Failed to write file to disk.'),
-		__('File upload stopped by extension.'),
+		translate('Missing a temporary folder.'),
+		translate('Failed to write file to disk.'),
+		translate('File upload stopped by extension.'),
 	]; // Courtesy of php.net, the strings that describe the error indicated in $_FILES[{form field}]['error'].
 	if($error > 0){
 		if(empty($upload_error_strings[$error])){
-			$error_msg = __('Something went wrong.');
+			$error_msg = translate('Something went wrong.');
 		} else {
 			$error_msg = $upload_error_strings[$error];
 		}
@@ -314,9 +325,9 @@ function __test_error($error = 0){ // A successful upload will pass this test.
 function __test_size($file_size = 0){ // A non-empty file will pass this test.
 	if(0 === $file_size){
 		if(is_multisite()){
-			$error_msg = __('File is empty. Please upload something more substantial.');
+			$error_msg = translate('File is empty. Please upload something more substantial.');
 		} else {
-			$error_msg = sprintf(__('File is empty. Please upload something more substantial. This error could also be caused by uploads being disabled in your %1$s file or by %2$s being defined as smaller than %3$s in %1$s.'), 'php.ini', 'post_max_size', 'upload_max_filesize');
+			$error_msg = sprintf(translate('File is empty. Please upload something more substantial. This error could also be caused by uploads being disabled in your %1$s file or by %2$s being defined as smaller than %3$s in %1$s.'), 'php.ini', 'post_max_size', 'upload_max_filesize');
 		}
 		return __error($error_msg);
 	}
@@ -335,7 +346,7 @@ function __test_type($tmp_name = '', $name = '', $mimes = null){ // A correct MI
 		$name = $proper_filename;
 	}
 	if((!$type or !$ext) and !current_user_can('unfiltered_upload')){
-		$error_msg = __('Sorry, you are not allowed to upload this file type.');
+		$error_msg = translate('Sorry, you are not allowed to upload this file type.');
 		return __error($error_msg);
 	}
 	return $name;
@@ -346,7 +357,7 @@ function __test_type($tmp_name = '', $name = '', $mimes = null){ // A correct MI
  */
 function __test_uploaded_file($tmp_name = ''){ // A properly uploaded file will pass this test.
 	if(!is_uploaded_file($tmp_name)){
-		$error_msg = __('Specified file failed upload test.');
+		$error_msg = translate('Specified file failed upload test.');
 		return __error($error_msg);
 	}
 	return true;

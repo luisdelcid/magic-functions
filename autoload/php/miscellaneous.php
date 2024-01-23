@@ -1,14 +1,61 @@
 <?php
 
 /**
+ * @return int
+ */
+function __absint($maybeint = 0){
+	if(!is_numeric($maybeint)){
+		return 0; // Make sure the value is numeric to avoid casting objects, for example, to int 1.
+	}
+	return absint($maybeint);
+}
+
+/**
  * @return string
  */
-function __caller_file(){
-	$debug = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2);
-	if(2 > count($debug)){
+function __caller($index = 0){
+	$index = __absint($index);
+	$limit = $index + 1;
+	$debug = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, $limit);
+    if($limit > count($debug)){
+        return [];
+    }
+	$caller = shortcode_atts([
+        'args' => [],
+        'class' => '',
+        'file' => '',
+        'function' => '',
+		'line' => 0,
+        'object' => null,
+        'type' => '',
+    ], $debug[$index]);
+	return $caller;
+}
+
+/**
+ * @return string
+ */
+function __caller_class($index = 0){
+	$index = __absint($index);
+	$index ++;
+	$caller = __caller($index);
+	if(!$caller){
 		return '';
 	}
-	return $debug[1]['file'];
+	return $caller['class'];
+}
+
+/**
+ * @return string
+ */
+function __caller_file($index = 0){
+	$index = __absint($index);
+	$index ++;
+	$caller = __caller($index);
+	if(!$caller){
+		return '';
+	}
+	return $caller['file'];
 }
 
 /**
@@ -56,7 +103,7 @@ function __current_screen_is($id = ''){
  */
 function __custom_login_logo($attachment_id = 0, $half = true){
 	if(!wp_attachment_is_image($attachment_id)){
-		return __error(__('File is not an image.'));
+		return __error(translate('File is not an image.'));
 	}
 	$custom_logo = wp_get_attachment_image_src($attachment_id, 'medium');
 	$height = $custom_logo[2];
@@ -72,7 +119,7 @@ function __custom_login_logo($attachment_id = 0, $half = true){
 	}
 	$custom_login_logo = [$custom_logo[0], $width, $height];
     __set_cache('custom_login_logo', $custom_login_logo);
-    __add_action_once('login_enqueue_scripts', '__maybe_replace_login_logo');
+    __add_action_once('login_enqueue_scripts', '___custom_login_logo');
 	return true;
 }
 
@@ -80,7 +127,7 @@ function __custom_login_logo($attachment_id = 0, $half = true){
  * @return string
  */
 function __format_function($function_name = '', $args = []){
-	$str = '<div style="color: #24831d; font-family: monospace; font-weight: 400;">' . $function_name . '(';
+	$str = '<span style="color: #24831d; font-family: monospace; font-weight: 400;">' . $function_name . '(';
 	$function_args = [];
 	foreach($args as $arg){
 		$arg = shortcode_atts([
@@ -95,7 +142,7 @@ function __format_function($function_name = '', $args = []){
 	if($function_args){
 		$str .= ' ' . implode(', ', $function_args) . ' ';
 	}
-	$str .= ')</div>';
+	$str .= ')</span>';
 	return $str;
 }
 
@@ -103,7 +150,42 @@ function __format_function($function_name = '', $args = []){
  * @return bool
  */
 function __go_to($str = ''){
-	return trim(str_replace('&larr;', '', sprintf(_x('&larr; Go to %s', 'site'), $str)));
+	return trim(str_replace('&larr;', '', sprintf(translate_with_gettext_context('&larr; Go to %s', 'site'), $str)));
+}
+
+/**
+ * @return string
+ */
+function __breadcrumbs($breadcrumbs = [], $separator = '>'){
+    $elements = [];
+    foreach($breadcrumbs as $breadcrumb){
+        if(!isset($breadcrumb['text'])){
+            continue;
+        }
+        $text = $breadcrumb['text'];
+        if(isset($breadcrumb['link'])){
+            $href = $breadcrumb['link'];
+            $target = isset($breadcrumb['target']) ? $breadcrumb['target'] : '_self';
+            $element = sprintf('<a href="%1$s" target="%2$s">%3$s</a>', esc_url($href), esc_attr($target), esc_html($text));
+        } else {
+            $element = sprintf('<span>%1$s</a>', esc_html($text));
+        }
+        $elements[] = $element;
+    }
+    $separator = ' ' . trim($separator) . ' ';
+	return implode($separator, $elements);
+}
+
+/**
+ * @return bool
+ */
+function __has_btn_class($class = ''){
+    $class = __remove_whitespaces($class);
+    preg_match_all('/btn-[A-Za-z][-A-Za-z0-9_:.]*/', $class, $matches);
+	$matches = array_filter($matches[0], function($match){
+		return !in_array($match, ['btn-block', 'btn-lg', 'btn-sm']);
+	});
+	return (bool) $matches;
 }
 
 /**
@@ -123,7 +205,7 @@ function __is_false($data = ''){
 /**
  * @return bool
  */
-function __is_post_revision_or_auto_draft($post = null){
+function __is_revision_or_auto_draft($post = null){
 	return (wp_is_post_revision($post) or 'auto-draft' === get_post_status($post));
 }
 
@@ -139,49 +221,8 @@ function __is_true($data = ''){
  */
 function __local_login_header(){
     __set_cache('local_login_header', true);
-    __add_filter_once('login_headertext', '__maybe_local_login_headertext');
-    __add_filter_once('login_headerurl', '__maybe_local_login_headerurl');
-}
-
-/**
- * @return string
- */
-function __maybe_local_login_headertext($login_header_text){
-	$local_login_header = (bool) __get_cache('local_login_header', false);
-	if(!$local_login_header){
-        return $login_header_text;
-	}
-	return get_option('blogname');
-}
-
-/**
- * @return string
- */
-function __maybe_local_login_headerurl($login_header_url){
-    $local_login_header = (bool) __get_cache('local_login_header', false);
-	if(!$local_login_header){
-        return $login_header_url;
-	}
-    return home_url();
-}
-
-/**
- * @return string
- */
-function __maybe_replace_login_logo(){
-    $custom_login_logo = (array) __get_cache('custom_login_logo', []);
-    if(!$custom_login_logo){
-        return;
-    } ?>
-	<style type="text/css">
-		#login h1 a,
-		.login h1 a {
-			background-image: url(<?php echo $custom_login_logo[0]; ?>);
-			background-size: <?php echo $custom_login_logo[1]; ?>px <?php echo $custom_login_logo[2]; ?>px;
-			height: <?php echo $custom_login_logo[2]; ?>px;
-			width: <?php echo $custom_login_logo[1]; ?>px;
-		}
-	</style><?php
+    __add_filter_once('login_headertext', '___local_login_header_text');
+    __add_filter_once('login_headerurl', '___local_login_header_url');
 }
 
 /**
@@ -243,4 +284,51 @@ function __validate_redirect_to($url = ''){
 		$redirect_to = wp_http_validate_url($url);
 	}
 	return (string) $redirect_to;
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// These functions’ access is marked private.
+//
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+/**
+ * @return void
+ */
+function ___custom_login_logo(){
+	$custom_login_logo = (array) __get_cache('custom_login_logo', []);
+    if(!$custom_login_logo){
+        return;
+    } ?>
+	<style type="text/css">
+		#login h1 a,
+		.login h1 a {
+			background-image: url(<?php echo $custom_login_logo[0]; ?>);
+			background-size: <?php echo $custom_login_logo[1]; ?>px <?php echo $custom_login_logo[2]; ?>px;
+			height: <?php echo $custom_login_logo[2]; ?>px;
+			width: <?php echo $custom_login_logo[1]; ?>px;
+		}
+	</style><?php
+}
+
+/**
+ * @return void
+ */
+function ___local_login_header_text($login_header_text){
+	$local_login_header = (bool) __get_cache('local_login_header', false);
+	if(!$local_login_header){
+        return $login_header_text;
+	}
+	return get_option('blogname');
+}
+
+/**
+ * @return void
+ */
+function ___local_login_header_url($login_header_url){
+	$local_login_header = (bool) __get_cache('local_login_header', false);
+	if(!$local_login_header){
+        return $login_header_url;
+	}
+    return home_url();
 }

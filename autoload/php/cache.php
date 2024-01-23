@@ -12,7 +12,7 @@ function __get_array_cache($array_key = '', $key = '', $default = null){
  * @return mixed
  */
 function __get_cache($key = '', $default = null){
-	$group = __prefix(false);
+	$group = ___prefix();
 	$value = wp_cache_get($key, $group, false, $found);
 	if($found){
 		return $value;
@@ -32,7 +32,7 @@ function __isset_array_cache($array_key = '', $key = ''){
  * @return bool
  */
 function __isset_cache($key = ''){
-	$group = __prefix(false);
+	$group = ___prefix();
 	$value = wp_cache_get($key, $group, false, $found);
     return $found;
 }
@@ -50,7 +50,7 @@ function __set_array_cache($array_key = '', $key = '', $data = null){
  * @return bool
  */
 function __set_cache($key = '', $data = null){
-	$group = __prefix(false);
+	$group = ___prefix();
 	return wp_cache_set($key, $data, $group);
 }
 
@@ -69,6 +69,6 @@ function __unset_array_cache($array_key = '', $key = ''){
  * @return bool
  */
 function __unset_cache($key = ''){
-	$group = __prefix(false);
+	$group = ___prefix();
 	return wp_cache_delete($key, $group);
 }

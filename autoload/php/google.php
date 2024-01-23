@@ -5,7 +5,7 @@
  */
 function __hide_recaptcha_badge(){
 	__set_cache('hide_recaptcha_badge', true);
-	__add_action_once('wp_head', '__maybe_hide_recaptcha_badge');
+	__add_action_once('wp_head', '___hide_recaptcha_badge');
 }
 
 /**
@@ -29,10 +29,23 @@ function __is_google_workspace($email = ''){
 }
 
 /**
+ * @return string
+ */
+function __recaptcha_branding(){
+	return 'This site is protected by reCAPTCHA and the Google <a href="https://policies.google.com/privacy" target="_blank">Privacy Policy</a> and <a href="https://policies.google.com/terms" target="_blank">Terms of Service</a> apply.';
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// These functions’ access is marked private.
+//
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+/**
  * @return void
  */
-function __maybe_hide_recaptcha_badge(){
-    $hide_recaptcha_badge = (bool) __get_cache('hide_recaptcha_badge', false);
+function ___hide_recaptcha_badge(){
+	$hide_recaptcha_badge = (bool) __get_cache('hide_recaptcha_badge', false);
 	if(!$hide_recaptcha_badge){
 		return;
 	} ?>
@@ -41,11 +54,4 @@ function __maybe_hide_recaptcha_badge(){
             visibility: hidden !important;
         }
     </style><?php
-}
-
-/**
- * @return string
- */
-function __recaptcha_branding(){
-	return 'This site is protected by reCAPTCHA and the Google <a href="https://policies.google.com/privacy" target="_blank">Privacy Policy</a> and <a href="https://policies.google.com/terms" target="_blank">Terms of Service</a> apply.';
 }

@@ -1,13 +1,21 @@
 <?php
 
 /**
+ * This function MUST be called inside the 'admin_notices' action hook.
+ *
  * @return void
  */
-function __add_admin_notice($message = '', $class = 'warning', $is_dismissible = false){
+function __admin_notice($message = '', $class = 'warning', $is_dismissible = false){
+	if(!doing_action('admin_notices')){
+        return;
+    }
 	$html = __admin_notice_html($message, $class, $is_dismissible);
 	$md5 = md5($html);
+	if(__isset_array_cache('admin_notices', $md5)){
+		return;
+	}
 	__set_array_cache('admin_notices', $md5, $html);
-	__add_action_once('admin_notices', '__maybe_add_admin_notices');
+	echo $html;
 }
 
 /**
@@ -21,17 +29,4 @@ function __admin_notice_html($message = '', $class = 'warning', $is_dismissible 
 		$class .= ' is-dismissible';
 	}
 	return '<div class="notice notice-' . $class . '"><p>' . $message . '</p></div>';
-}
-
-/**
- * @return void
- */
-function __maybe_add_admin_notices(){
-    $admin_notices = (array) __get_cache('admin_notices', []);
-	if(!$admin_notices){
-		return;
-	}
-	foreach($admin_notices as $md5 => $admin_notice){
-		echo $admin_notice;
-	}
 }

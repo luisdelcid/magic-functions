@@ -3,6 +3,50 @@
 /**
  * @return string
  */
+function __str_prefix($str = '', $prefix = ''){
+    $prefix = str_replace('\\', '_', $prefix); // Fix namespaces.
+    $prefix = __canonicalize($prefix);
+    $prefix = rtrim($prefix, '_');
+    if(empty($prefix)){
+        $prefix = __prefix();
+    }
+    $str = __remove_whitespaces($str);
+    if(empty($str)){
+        return $prefix;
+    }
+    if(0 === strpos($str, $prefix)){
+        return $str; // Text is already prefixed.
+    }
+    return $prefix . '_' . $str;
+}
+
+/**
+ * @return string
+ */
+function __str_slug($str = '', $slug = ''){
+    $slug = str_replace('_', '-', $slug); // Fix canonicalized.
+    $slug = str_replace('\\', '-', $slug); // Fix namespaces.
+	$slug = sanitize_title($slug);
+    $slug = rtrim($slug, '-');
+    if(!$slug){
+        $slug = __slug();
+    }
+    $str = __remove_whitespaces($str);
+    if(empty($str)){
+        return $slug;
+    }
+    if(0 === strpos($str, $slug)){
+        return $str; // Text is already slugged.
+    }
+    return $slug . '-' . $str;
+}
+
+
+
+
+/**
+ * @return string
+ */
 function __base64_urldecode($data = '', $strict = false){
 	return base64_decode(strtr($data, '-_', '+/'), $strict);
 }

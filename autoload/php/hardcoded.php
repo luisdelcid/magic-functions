@@ -15,12 +15,12 @@ function __include_theme_functions(){
  * @return string
  */
 function __prefix(){
-    return 'magic_functions'; // Hardcoded;
+    return 'mf'; // Hardcoded;
 }
 
 /**
  * @return string
  */
 function __slug(){
-    return 'magic-functions'; // Hardcoded;
+    return 'mf'; // Hardcoded;
 }

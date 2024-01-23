@@ -17,10 +17,10 @@ Version: 0.1.21
 
 // Make sure we don't expose any info if called directly.
 defined('ABSPATH') or die('Hi there! I\'m just a plugin, not much I can do when called directly.');
-foreach(glob(plugin_dir_path(__FILE__) . 'src/autoload/*.php') as $__file){
-    require_once($__file);
+foreach(glob(plugin_dir_path(__FILE__) . 'src/autoload/*.php') as $mf_file){
+    require_once($mf_file);
 }
-unset($__file);
+unset($mf_file);
 __build_update_checker('https://github.com/luisdelcid/magic-functions', __FILE__);
 __enqueue_functions();
 __include_theme_functions();

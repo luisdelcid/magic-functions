@@ -6,6 +6,9 @@
  * @return void
  */
 function __cf7_abort(&$abort, $message = '', $submission = null){
+	if(!doing_action('wpcf7_before_send_mail')){
+        return;
+    }
 	if($abort){
 		return; // Already aborted.
 	}

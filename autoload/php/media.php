@@ -9,9 +9,29 @@ function __add_image_size($name = '', $width = 0, $height = 0, $crop = false){
 	if(in_array($size, $image_sizes)){
 		return;
 	}
-	__set_array_cache('image_sizes', $size, $name);
 	add_image_size($size, $width, $height, $crop);
-	__add_filter_once('image_size_names_choose', '___add_image_sizes');
+	if(!__isset_cache('image_sizes')){
+		add_filter('image_size_names_choose', '__add_image_sizes');
+	}
+	__set_array_cache('image_sizes', $size, $name);
+}
+
+/**
+ * This function’s access is marked private. This means it is not intended for use by plugin or theme developers, only in other core functions.
+ *
+ * This function MUST be called inside the 'image_size_names_choose' filter hook.
+ *
+ * @return array
+ */
+function __add_image_sizes($sizes){
+	if(!doing_filter('image_size_names_choose')){
+        return $sizes;
+    }
+	$image_sizes = (array) __get_cache('image_sizes', []);
+	foreach($image_sizes as $size => $name){
+		$sizes[$size] = $name;
+	}
+	return $sizes;
 }
 
 /**
@@ -103,14 +123,6 @@ function __fa_file_type($post = null){
 }
 
 /**
- * @return void
- */
-function __fix_audio_video_ext(){
-    __set_cache('fix_audio_video_ext', true);
-	__add_filter_once('wp_check_filetype_and_ext', '___fix_audio_video_ext', 10, 5);
-}
-
-/**
  * @return int
  */
 function __guid_to_postid($guid = '', $check_rewrite_rules = false){
@@ -143,47 +155,4 @@ function __maybe_generate_attachment_metadata($attachment_id = 0){
 	}
 	wp_maybe_generate_attachment_metadata($attachment);
 	return true;
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//
-// These functions’ access is marked private.
-//
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-/**
- * @return array
- */
-function ___add_image_sizes($sizes){
-	$image_sizes = (array) __get_cache('image_sizes', []);
-	if(!$image_sizes){
-		return $sizes;
-	}
-	foreach($image_sizes as $size => $name){
-		$sizes[$size] = $name;
-	}
-	return $sizes;
-}
-
-/**
- * @return void
- */
-function ___fix_audio_video_ext($wp_check_filetype_and_ext, $file, $filename, $mimes, $real_mime){
-    $fix_audio_video_ext = (bool) __get_cache('fix_audio_video_ext', false);
-	if(!$fix_audio_video_ext){
-		return $wp_check_filetype_and_ext;
-	}
-    if($wp_check_filetype_and_ext['ext'] and $wp_check_filetype_and_ext['type']){
-        return $wp_check_filetype_and_ext;
-    }
-    if(0 !== strpos($real_mime, 'audio/') and 0 !== strpos($real_mime, 'video/')){
-        return $wp_check_filetype_and_ext;
-    }
-    $filetype = wp_check_filetype($filename);
-    if(!in_array(substr($filetype['type'], 0, strcspn($filetype['type'], '/')), ['audio', 'video'])){
-        return $wp_check_filetype_and_ext;
-    }
-    $wp_check_filetype_and_ext['ext'] = $filetype['ext'];
-    $wp_check_filetype_and_ext['type'] = $filetype['type'];
-    return $wp_check_filetype_and_ext;
 }

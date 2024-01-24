@@ -1,9 +1,16 @@
 <?php
 
 /**
+ * This function’s access is marked private. This means it is not intended for use by plugin or theme developers, only in other core functions.
+ *
+ * This function MUST be called inside the 'authenticate' filter hook.
+ *
  * @return bool|WP_Error|WP_User
  */
 function __authenticate_without_password($user, $username_or_email, $password){
+	if(!doing_filter('authenticate')){
+        return $user;
+    }
 	if(!is_null($user)){
 		return $user;
 	}
@@ -27,7 +34,7 @@ function __signon($username_or_email = '', $password = '', $remember = false){
 	if(is_user_logged_in()){
 		return wp_get_current_user();
 	}
-	$disable_captcha = !has_filter('wordfence_ls_require_captcha', '__wordfence_ls_disable_captcha');
+	$disable_captcha = !has_filter('wordfence_ls_require_captcha', '__return_false');
 	if($disable_captcha){
 		add_filter('wordfence_ls_require_captcha', '__return_false');
 	}
@@ -53,7 +60,7 @@ function __signon_without_password($username_or_email = '', $remember = false){
 		return wp_get_current_user();
 	}
     add_filter('authenticate', '__authenticate_without_password', 10, 3);
-	$disable_captcha = !has_filter('wordfence_ls_require_captcha', '__wordfence_ls_disable_captcha');
+	$disable_captcha = !has_filter('wordfence_ls_require_captcha', '__return_false');
 	if($disable_captcha){
 		add_filter('wordfence_ls_require_captcha', '__return_false');
 	}

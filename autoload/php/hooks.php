@@ -3,7 +3,7 @@
 /**
  * @return string
  */
-function __add_action(...$args){
+function __add_action_idx(...$args){
     return __on(...$args);
 }
 
@@ -17,7 +17,7 @@ function __add_action_once(...$args){
 /**
  * @return string
  */
-function __add_filter(...$args){
+function __add_filter_idx(...$args){
     return __on(...$args);
 }
 

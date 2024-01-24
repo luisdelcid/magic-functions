@@ -13,7 +13,7 @@ Magic Functions
 
 == Description ==
 
-Magic functions for WordPress, plugins and themes.
+A collection of magic functions for WordPress, plugins and themes.
 
 = For plugins =
 

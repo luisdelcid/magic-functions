@@ -1,9 +1,14 @@
 <?php
 
 /**
+ * This function MUST be called inside the 'after_setup_theme' action hook.
+ *
  * @return void
  */
-function __include_theme_functions(){
+function __require_theme_functions(){
+	if(!doing_action('after_setup_theme')){
+        return;
+    }
     $file = get_stylesheet_directory() . '/magic-functions.php';
     if(!file_exists($file)){
         return;
@@ -15,12 +20,12 @@ function __include_theme_functions(){
  * @return string
  */
 function __prefix(){
-    return 'mf'; // Hardcoded;
+    return 'magic_functions'; // Hardcoded;
 }
 
 /**
  * @return string
  */
 function __slug(){
-    return 'mf'; // Hardcoded;
+    return 'magic-functions'; // Hardcoded;
 }

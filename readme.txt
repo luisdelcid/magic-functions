@@ -19,7 +19,9 @@ A collection of magic functions for WordPress, plugins and themes.
 Add the following code to the main plugin file:
 
 `add_action('plugins_loaded', function(){`
-`if(did_action('magic_loaded')){ 'do your magic here' }`
+`. if(did_action('magic_loaded')){`
+`.   'do your magic here'`
+`. }`
 `});`
 
 = For themes =

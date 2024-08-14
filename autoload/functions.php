@@ -117,6 +117,25 @@ if(!function_exists('__enqueue_functions')){
 	}
 }
 
+if(!function_exists('__error')){
+	/**
+	 * Alias for new WP_Error::__construct.
+	 *
+	 * @return WP_Error
+	 */
+	function __error($message = '', $data = ''){
+		if(is_wp_error($message)){
+			$data = $message->get_error_data();
+			$message = $message->get_error_message();
+		}
+		if(empty($message)){
+			$message = translate('Something went wrong.');
+		}
+		$code = 'magic_error'; // Hardcoded.
+		return new \WP_Error($code, $message, $data);
+	}
+}
+
 if(!function_exists('__get_instance')){
 	/**
 	 * @return __Singleton|WP_Error
@@ -3054,25 +3073,6 @@ if(!function_exists('__maybe_enqueue_login_assets')){
 // Errors
 //
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-if(!function_exists('__error')){
-	/**
-	 * Alias for new WP_Error::__construct.
-	 *
-	 * @return WP_Error
-	 */
-	function __error($message = '', $data = ''){
-		if(is_wp_error($message)){
-			$data = $message->get_error_data();
-			$message = $message->get_error_message();
-		}
-		if(empty($message)){
-			$message = translate('Something went wrong.');
-		}
-		$code = __str_prefix('error');
-		return new \WP_Error($code, $message, $data);
-	}
-}
 
 if(!function_exists('__exit_with_error')){
 	/**
@@ -6682,7 +6682,7 @@ if(!function_exists('__remote_lib')){
 		if(is_wp_error($fs)){
 			return $fs;
 		}
-		$name = 'remote_lib_' . $key;
+		$name = 'remote-lib-' . $key;
 		$to = $download_dir . '/' . $name;
 		if(empty($expected_dir)){
 			$expected_dir = $to;

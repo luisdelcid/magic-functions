@@ -38,7 +38,7 @@ add_action('plugins_loaded', function(){
     require_once($autoload_dir . '/functions.php');
 
     // Check for updates.
-    __plugin_update_checker();
+    __build_update_checker('https://github.com/luisdelcid/magic-functions', __FILE__, 'magic-functions');
 
     // Load JavaScript classes and functions.
     __enqueue_functions();

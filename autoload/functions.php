@@ -6,74 +6,6 @@
 //
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-if(!function_exists('__add_hiding_rule')){
-    /**
-     * @return void
-     */
-    function __add_hiding_rule($args = []){
-        if(is_multisite()){
-    		return; // The rewrite rules are not for WordPress MU networks.
-    	}
-    	$pairs = [
-            'capability' => '',
-            'exclude_other_media' => [],
-            'exclude_public_media' => false,
-            'file' => '',
-    		'subdir' => '',
-    	];
-        $args = shortcode_atts($pairs, $args);
-    	$md5 = __md5($args);
-        if(__isset_array_cache('hide_uploads_subdir', $md5)){
-            return; // Prevent adding rule when already added.
-        }
-        __set_array_cache('hide_uploads_subdir', $md5, $args);
-    	$uploads_use_yearmonth_folders = false;
-    	$subdir = ltrim(untrailingslashit($args['subdir']), '/');
-    	if($subdir){
-    		$subdir = '/(' . $subdir . ')';
-    	} else {
-    		if(get_option('uploads_use_yearmonth_folders')){
-    			$subdir = '/(\d{4})/(\d{2})';
-    			$uploads_use_yearmonth_folders = true;
-    		} else {
-    			$subdir = '';
-    		}
-    	}
-    	$upload_dir = wp_get_upload_dir();
-    	if($upload_dir['error']){
-    		return;
-    	}
-        $atts = [];
-        $path = plugin_dir_path(__FILE__) . 'readfile.php'; // Hardcoded.
-    	$tmp = str_replace(wp_normalize_path(ABSPATH), '', wp_normalize_path($path));
-    	$parts = explode('/', $tmp);
-    	$levels = count($parts);
-    	$query = __dir_to_url($path);
-    	$regex = $upload_dir['baseurl'] . $subdir. '/(.+)';
-    	if($uploads_use_yearmonth_folders){
-    		$atts['yyyy'] = '$1';
-    		$atts['mm'] = '$2';
-    		$atts['file'] = '$3';
-    	} else {
-    		$atts['subdir'] = '$1';
-    		$atts['file'] = '$2';
-    	}
-    	$atts['levels'] = $levels;
-        $atts['md5'] = $md5;
-        $value = [
-            'capability' => $args['capability'],
-            'exclude_other_media' => $args['exclude_other_media'],
-            'exclude_public_media' => $args['exclude_public_media'],
-        ];
-        //$option = __str_prefix('hide_uploads_subdir_exclude_' . $md5);
-        $option = __str_prefix('hide_uploads_subdir_' . $md5);
-        //update_option($option, (array) $args['exclude'], 'no');
-        update_option($option, $value, 'no');
-    	$query = add_query_arg($atts, $query);
-    	__add_external_rule($regex, $query, $args['file']);
-    }
-}
-
 if(!function_exists('__download_dir')){
 	/**
 	 * @return string|WP_Error
@@ -88,86 +20,6 @@ if(!function_exists('__download_dir')){
 		return __mkdir($dir);
 	}
 }
-
-if(!function_exists('__enqueue_functions')){
-	/**
-	 * @return void
-	 */
-	function __enqueue_functions(){
-        __omni_enqueue('stackframe', 'https://cdn.jsdelivr.net/npm/stackframe@1.3.4/stackframe.min.js', [], '1.3.4');
-        __omni_enqueue('error-stack-parser', 'https://cdn.jsdelivr.net/npm/error-stack-parser@2.1.4/error-stack-parser.min.js', ['stackframe'], '2.1.4');
-        $handle = 'magic-functions'; // Hardcoded.
-        $file = plugin_dir_path(__FILE__) . 'functions.js'; // Hardcoded.
-        $deps = ['error-stack-parser', 'jquery', 'underscore', 'utils', 'wp-api', 'wp-hooks'];
-        $l10n = [
-            'mu_plugins_url' => __dir_to_url(wp_normalize_path(WPMU_PLUGIN_DIR)),
-            'plugins_url' => __dir_to_url(wp_normalize_path(WP_PLUGIN_DIR)),
-            'site_url' => site_url(),
-        ];
-        __local_omni_enqueue($handle, $file, $deps, $l10n);
-	}
-}
-
-if(!function_exists('__get_instance')){
-	/**
-	 * @return __Singleton|WP_Error
-	 */
-	function __get_instance($class = ''){
-	    if(!$class){
-            $error_msg = translate('The "%s" argument must be a non-empty string.');
-            $error_msg = sprintf($error_msg, 'class');
-            return __error($error_msg);
-	    }
-	    if(!class_exists($class)){
-            $error_msg = sprintf(translate('Missing parameter(s): %s'), '"' . $class . '"') . '.';
-	        return __error($error_msg);
-	    }
-	    if(!is_subclass_of($class, '__Singleton')){ // Hardcoded.
-            $error_msg = sprintf(translate('Invalid parameter(s): %s'), '"' . $class . '"') . '.';
-	        return __error($error_msg);
-	    }
-	    return call_user_func([$class, 'get_instance']);
-	}
-}
-
-if(!function_exists('__prefix')){
-	/**
-	 * @return string
-	 */
-	function __prefix(){
-	    return 'magic_functions'; // Hardcoded.
-	}
-}
-
-if(!function_exists('__slug')){
-	/**
-	 * @return string
-	 */
-	function __slug(){
-        return 'magic-functions'; // Hardcoded.
-	}
-}
-
-if(!function_exists('__upload_dir')){
-	/**
-	 * @return string|WP_Error
-	 */
-	function __upload_dir($subdir = ''){
-        $dir = 'magic-uploads'; // Hardcoded.
-        $subdir = ltrim($subdir, '/');
-	    $subdir = untrailingslashit($subdir);
-	    if($subdir){
-	        $dir .= '/' . $subdir;
-	    }
-		return __mkdir($dir);
-	}
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//
-// These functions’ access is marked private. This means they are not intended for use by plugin or theme developers, only in other core functions.
-//
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 if(!function_exists('__enqueue_asset')){
     /**
@@ -210,10 +62,10 @@ if(!function_exists('__enqueue_asset')){
             wp_enqueue_style($handle, $src, $deps, $ver, $media);
             return $handle;
         }
-        $maybe_autoload = false;
+		$maybe_autoload = false;
         $path = __url_to_dir($src);
         if($path){ // This WordPress installation.
-            $plugin_dir_path = plugin_dir_path(__FILE__); // Hardcoded.
+            $plugin_dir_path = plugin_dir_path(dirname(__FILE__)); // Hardcoded.
             if(!__str_starts_with($path, $plugin_dir_path)){ // Not this plugin.
                 $maybe_autoload = true;
                 $deps[] = 'magic-functions'; // Hardcoded.
@@ -233,7 +85,7 @@ if(!function_exists('__enqueue_asset')){
         wp_enqueue_script($handle, $src, $deps, $ver, $args);
         $object_name = __canonicalize($handle);
         if($maybe_autoload){
-            $data = "__get_instance('$object_name');";
+            $data = "__get_instance('$object_name');"; // Hardcoded.
             wp_add_inline_script($handle, $data);
         }
         if($l10n){
@@ -243,9 +95,53 @@ if(!function_exists('__enqueue_asset')){
     }
 }
 
+if(!function_exists('__enqueue_functions')){
+	/**
+	 * @return void
+	 */
+	function __enqueue_functions(){
+		__omni_enqueue('stackframe', 'https://cdn.jsdelivr.net/npm/stackframe@1.3.4/stackframe.min.js', [], '1.3.4');
+        __omni_enqueue('error-stack-parser', 'https://cdn.jsdelivr.net/npm/error-stack-parser@2.1.4/error-stack-parser.min.js', ['stackframe'], '2.1.4');
+		$handle = 'magic-singleton'; // Hardcoded.
+        $file = plugin_dir_path(__FILE__) . 'singleton.js'; // Hardcoded.
+        __local_omni_enqueue($handle, $file);
+        $handle = 'magic-functions'; // Hardcoded.
+        $file = plugin_dir_path(__FILE__) . 'functions.js'; // Hardcoded.
+        $deps = ['error-stack-parser', 'jquery', 'magic-singleton', 'underscore', 'utils', 'wp-api', 'wp-hooks']; // Hardcoded.
+        $l10n = [
+            'mu_plugins_url' => __dir_to_url(wp_normalize_path(WPMU_PLUGIN_DIR)),
+            'plugins_url' => __dir_to_url(wp_normalize_path(WP_PLUGIN_DIR)),
+            'site_url' => site_url(),
+        ];
+        __local_omni_enqueue($handle, $file, $deps, $l10n);
+	}
+}
+
+if(!function_exists('__get_instance')){
+	/**
+	 * @return __Singleton|WP_Error
+	 */
+	function __get_instance($class = ''){
+	    if(!$class){
+            $error_msg = translate('The "%s" argument must be a non-empty string.');
+            $error_msg = sprintf($error_msg, 'class');
+            return __error($error_msg);
+	    }
+	    if(!class_exists($class)){
+            $error_msg = sprintf(translate('Missing parameter(s): %s'), '"' . $class . '"') . '.';
+	        return __error($error_msg);
+	    }
+	    if(!is_subclass_of($class, '__Singleton')){ // Hardcoded.
+            $error_msg = sprintf(translate('Invalid parameter(s): %s'), '"' . $class . '"') . '.';
+	        return __error($error_msg);
+	    }
+	    return call_user_func([$class, 'get_instance']);
+	}
+}
+
 if(!function_exists('__maybe_require_theme_functions')){
 	/**
-	 * This function MUST be called inside the 'admin_notices' action hook.
+	 * This function MUST be called inside the 'after_setup_theme' action hook.
 	 *
 	 * @return void
 	 */
@@ -258,6 +154,48 @@ if(!function_exists('__maybe_require_theme_functions')){
 	        return;
 	    }
 	    require_once($file);
+	}
+}
+
+if(!function_exists('__prefix')){
+	/**
+	 * @return string
+	 */
+	function __prefix(){
+	    return 'magic_functions'; // Hardcoded.
+	}
+}
+
+if(!function_exists('__shortinit_dir')){
+	/**
+	 * @return string
+	 */
+	function __shortinit_dir(){
+		return plugin_dir_path(dirname(__FILE__)) . 'shortinit';
+	}
+}
+
+if(!function_exists('__slug')){
+	/**
+	 * @return string
+	 */
+	function __slug(){
+        return 'magic-functions'; // Hardcoded.
+	}
+}
+
+if(!function_exists('__upload_dir')){
+	/**
+	 * @return string|WP_Error
+	 */
+	function __upload_dir($subdir = ''){
+        $dir = 'magic-uploads'; // Hardcoded.
+        $subdir = ltrim($subdir, '/');
+	    $subdir = untrailingslashit($subdir);
+	    if($subdir){
+	        $dir .= '/' . $subdir;
+	    }
+		return __mkdir($dir);
 	}
 }
 
@@ -3773,6 +3711,74 @@ if(!function_exists('__maybe_hide_recaptcha_badge')){
 // Hide
 //
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+if(!function_exists('__add_hiding_rule')){
+    /**
+     * @return void
+     */
+    function __add_hiding_rule($args = []){
+        if(is_multisite()){
+    		return; // The rewrite rules are not for WordPress MU networks.
+    	}
+    	$pairs = [
+            'capability' => '',
+            'exclude_other_media' => [],
+            'exclude_public_media' => false,
+            'file' => '',
+    		'subdir' => '',
+    	];
+        $args = shortcode_atts($pairs, $args);
+    	$md5 = __md5($args);
+        if(__isset_array_cache('hide_uploads_subdir', $md5)){
+            return; // Prevent adding rule when already added.
+        }
+        __set_array_cache('hide_uploads_subdir', $md5, $args);
+    	$uploads_use_yearmonth_folders = false;
+    	$subdir = ltrim(untrailingslashit($args['subdir']), '/');
+    	if($subdir){
+    		$subdir = '/(' . $subdir . ')';
+    	} else {
+    		if(get_option('uploads_use_yearmonth_folders')){
+    			$subdir = '/(\d{4})/(\d{2})';
+    			$uploads_use_yearmonth_folders = true;
+    		} else {
+    			$subdir = '';
+    		}
+    	}
+    	$upload_dir = wp_get_upload_dir();
+    	if($upload_dir['error']){
+    		return;
+    	}
+        $atts = [];
+        $path = __shortinit_dir() . '/readfile.php';
+    	$tmp = str_replace(wp_normalize_path(ABSPATH), '', wp_normalize_path($path));
+    	$parts = explode('/', $tmp);
+    	$levels = count($parts);
+    	$query = __dir_to_url($path);
+    	$regex = $upload_dir['baseurl'] . $subdir. '/(.+)';
+    	if($uploads_use_yearmonth_folders){
+    		$atts['yyyy'] = '$1';
+    		$atts['mm'] = '$2';
+    		$atts['file'] = '$3';
+    	} else {
+    		$atts['subdir'] = '$1';
+    		$atts['file'] = '$2';
+    	}
+    	$atts['levels'] = $levels;
+        $atts['md5'] = $md5;
+        $value = [
+            'capability' => $args['capability'],
+            'exclude_other_media' => $args['exclude_other_media'],
+            'exclude_public_media' => $args['exclude_public_media'],
+        ];
+        //$option = __str_prefix('hide_uploads_subdir_exclude_' . $md5);
+        $option = __str_prefix('hide_uploads_subdir_' . $md5);
+        //update_option($option, (array) $args['exclude'], 'no');
+        update_option($option, $value, 'no');
+    	$query = add_query_arg($atts, $query);
+    	__add_external_rule($regex, $query, $args['file']);
+    }
+}
 
 if(!function_exists('__hide_others_media')){
     /**

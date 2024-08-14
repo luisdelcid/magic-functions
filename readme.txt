@@ -20,7 +20,7 @@ Add the following code to the main plugin file:
 
 `add_action('plugins_loaded', function(){`
 `    if(did_action('magic_loaded')){`
-`        'do your magic here'`
+`        // Do your magic here.`
 `    }`
 `});`
 
@@ -29,7 +29,7 @@ Add the following code to the main plugin file:
 Create a new file named `magic-functions.php` and do your magic there or add the following code to the functions.php file:
 
 `if(did_action('magic_loaded')){`
-`    'do your magic here'`
+`    // Do your magic here.`
 `}`
 
 == Changelog ==

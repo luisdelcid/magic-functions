@@ -4,7 +4,7 @@ Donate link: https://luisdelcid.com
 Tags: magic, functions
 Tested up to: 6.6.1
 Requires PHP: 5.6
-Stable tag: 0.8.14
+Stable tag: 0.8.14.1
 License: GPL v2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 

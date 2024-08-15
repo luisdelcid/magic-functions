@@ -507,14 +507,14 @@ function __is_document_hidden(){
 /**
  * @return void
  */
-function __listen_for_visibilitychange(){
+function __track_document_visibility(){
     var $this = this;
     jQuery(function($){
         var event_name = __document_visibility_change_event();
         if(__document_has_visibility_event()){
             return;
         }
-        jQuery(document).on(event_name, $this, __do_visibilitychange_action); // Hardcoded.
+        jQuery(document).on(event_name, $this, __do_visibilitychange_action);
     });
 }
 

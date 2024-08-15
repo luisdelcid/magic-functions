@@ -4595,6 +4595,33 @@ if(!function_exists('__md5_to_uuid4')){
 //
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+if(!function_exists('__add_4k_image_size')){
+	/**
+	 * @return void
+	 */
+	function __add_4k_image_size(){
+		__add_image_size('4K', 3840, 3840);
+	}
+}
+
+if(!function_exists('__add_full_hd_image_size')){
+	/**
+	 * @return void
+	 */
+	function __add_full_hd_image_size(){
+		__add_image_size('Full HD', 1920, 1920);
+	}
+}
+
+if(!function_exists('__add_hd_image_size')){
+	/**
+	 * @return void
+	 */
+	function __add_hd_image_size(){
+		__add_image_size('HD', 1280, 1280);
+	}
+}
+
 if(!function_exists('__add_image_size')){
 	/**
 	 * @return void
@@ -4608,6 +4635,17 @@ if(!function_exists('__add_image_size')){
 		add_image_size($size, $width, $height, $crop);
 		__set_array_cache('image_sizes', $size, $name);
 		__add_filter_once('image_size_names_choose', '__maybe_add_image_size_names');
+	}
+}
+
+if(!function_exists('__add_larger_image_sizes')){
+	/**
+	 * @return void
+	 */
+	function __add_larger_image_sizes(){
+		__add_hd_image_size();
+		__add_full_hd_image_size();
+		__add_4k_image_size();
 	}
 }
 

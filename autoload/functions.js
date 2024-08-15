@@ -888,17 +888,8 @@ function __current_utm_param(name = ''){
  * @return object
  */
 function __current_utm_params(){
-    var at_least_one = false,
-        utm_params = __utm_params_from_get();
-    jQuery.each(utm_params, function(key, value){
-        if(!value){
-            return true; // Continue.
-        }
-        at_least_one = true;
-        return false; // Break.
-    });
-    if(at_least_one){
-        return utm_params; // 1. GET
+    if(__at_least_one_utm_get_param()){
+        return __utm_params_from_get(); // 1. GET
     }
     return __utm_params_from_cookie(); // 2. COOKIE
 }
@@ -919,6 +910,29 @@ function __utm_param_name(name = ''){
 // These functions’ access is marked private. This means they are not intended for use by plugin or theme developers, only in other core functions.
 //
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+/**
+ * @return string
+ */
+function __at_least_one_utm_get_param(){
+    var at_least_one = false,
+        utm_params = __utm_params_from_get();
+    jQuery.each(utm_params, function(key, value){
+        if(!value){
+            return true; // Continue.
+        }
+        at_least_one = true;
+        return false; // Break.
+    });
+    return utm_params;
+}
+
+/**
+ * @return string
+ */
+function __utm_cookie_name(){
+    return __str_prefix('utm_parameters');
+}
 
 /**
  * @return array
@@ -946,18 +960,18 @@ function __utm_pairs(){
  * @return object
  */
 function __utm_params_from_cookie(){
-    var cookie_value = wpCookies.get(__str_prefix('utm')),
-        cookie_values = {},
-        utm_params = {};
-    if(_.isUndefined(cookie_value) || _.isNull(cookie_value)){
-        cookie_value = '';
+    var utm_params = {},
+        value = wpCookies.get(__utm_cookie_name()),
+        values = {};
+    if(_.isUndefined(value) || _.isNull(value)){
+        value = '';
     }
-    cookie_values = __parse_str(cookie_value);
+    values = __parse_str(value);
     jQuery.each(__utm_keys(), function(index, key){
-        if(_.isUndefined(cookie_values[key])){
+        if(_.isUndefined(values[key])){
             utm_params[key] = '';
         } else {
-            utm_params[key] = cookie_values[key];
+            utm_params[key] = values[key];
         }
     });
     return utm_params;

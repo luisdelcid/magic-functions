@@ -168,6 +168,10 @@ if(!function_exists('__maybe_require_theme_functions')){
 		if(!doing_action('after_setup_theme')){ // Too early or too late.
 	        return;
 	    }
+		$require_theme_functions = (bool) __get_cache('require_theme_functions', false);
+		if(!$require_theme_functions){
+			return;
+		}
 	    $file = get_stylesheet_directory() . '/magic-functions.php';
 	    if(!file_exists($file)){
 	        return;
@@ -2533,6 +2537,43 @@ if(!function_exists('__cf7_maybe_filter_shortcode_tag_output')){
 		$output = apply_filters('cf7_shortcode_tag_output', $output, $contact_form, $attr);
 		return $output;
 	}
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// Cache
+//
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+if(!function_exists('__set_cookie')){
+    /**
+     * @return void
+     */
+    function __set_cookie($name = '', $value = '', $expires = 0){
+        if(!$name or !$value or !$expires){
+            return;
+        }
+        $secure = ('https' === parse_url(home_url(), PHP_URL_SCHEME));
+        $value = wp_unslash($value);
+        $value = esc_attr($value);
+        setcookie($name, $value, $expires, COOKIEPATH, COOKIE_DOMAIN, $secure);
+    }
+}
+
+if(!function_exists('__unset_cookie')){
+    /**
+     * @return void
+     */
+    function __unset_cookie($name = ''){
+        if(!$name){
+            return;
+        }
+        if(!isset($_COOKIE[$name])){
+            return;
+        }
+        $past = time() - YEAR_IN_SECONDS;
+        setcookie($name, ' ', $past, COOKIEPATH, COOKIE_DOMAIN);
+    }
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -4986,6 +5027,7 @@ if(!function_exists('__include_theme_functions')){
 	 * @return void
 	 */
 	function __include_theme_functions(){
+		__set_cache('require_theme_functions', true);
 		if(doing_action('after_setup_theme')){ // Just in time.
 			__maybe_require_theme_functions();
 			return;
@@ -7397,9 +7439,26 @@ if(!function_exists('__current_utm_params')){
      */
     function __current_utm_params(){
         if(__at_least_one_utm_get_param()){
-            return __utm_params_from_get();
+            return __utm_params_from_get(); // 1. GET
         }
-        return __utm_params_from_cookie();
+        return __utm_params_from_cookie(); // 2. COOKIE
+    }
+}
+
+if(!function_exists('__track_utm_parameters')){
+    /**
+     * @return void
+     */
+    function __track_utm_parameters(){
+        __set_cache('track_utm_parameters', true);
+		if(doing_action('after_setup_theme')){ // Just in time.
+			__maybe_set_utm_cookie();
+			return;
+		}
+		if(did_action('after_setup_theme')){ // Too late.
+			return;
+		}
+		__add_action_once('after_setup_theme', '__maybe_set_utm_cookie');
     }
 }
 
@@ -7440,47 +7499,39 @@ if(!function_exists('__at_least_one_utm_get_param')){
     }
 }
 
-if(!function_exists('__maybe_set_utm_cookies')){
+if(!function_exists('__maybe_set_utm_cookie')){
     /**
-     * @return void
+     * This function MUST be called inside the 'after_setup_theme' action hook.
+	 *
+	 * @return void
      */
-    function __maybe_set_utm_cookies(){
-        $track_campaigns = (bool) __get_cache('track_campaigns', false);
-        if(!$track_campaigns){
+    function __maybe_set_utm_cookie(){
+		if(!doing_action('after_setup_theme')){ // Too early or too late.
+	        return;
+	    }
+        $track_utm_parameters = (bool) __get_cache('track_utm_parameters', false);
+        if(!$track_utm_parameters){
             return;
         }
         if(!__at_least_one_utm_get_param()){
             return;
         }
-        __maybe_unset_utm_cookies();
-        $cookie_lifetime = time() + WEEK_IN_SECONDS;
-        $secure = ('https' === parse_url(home_url(), PHP_URL_SCHEME));
+        __maybe_unset_utm_cookie();
+        $cookie_lifetime = time() + (2 * MONTH_IN_SECONDS); // https://support.google.com/analytics/answer/7667196?hl=en_US&utm_id=ad
         $utm_params = __utm_params_from_get();
-        foreach($utm_params as $key => $value){
-            if(!$value){
-                continue;
-            }
-            $value = wp_unslash($value);
-            $value = esc_attr($value);
-            $name = __utm_cookie_name($key);
-            setcookie($name, $value, $cookie_lifetime, COOKIEPATH, COOKIE_DOMAIN, $secure);
-        }
+        $value = build_query($utm_params);
+        $name = __utm_cookie_name();
+        __set_cookie($name, $value, $cookie_lifetime);
     }
 }
 
-if(!function_exists('__maybe_unset_utm_cookies')){
+if(!function_exists('__maybe_unset_utm_cookie')){
     /**
      * @return void
      */
-    function __maybe_unset_utm_cookies(){
-        $past = time() - YEAR_IN_SECONDS;
-        foreach(__utm_keys() as $key){
-            $name = __utm_cookie_name($key);
-            if(!isset($_COOKIE[$name])){
-                continue;
-            }
-            setcookie($name, ' ', $past, COOKIEPATH, COOKIE_DOMAIN);
-        }
+    function __maybe_unset_utm_cookie(){
+        $name = __utm_cookie_name();
+        __unset_cookie($name);
     }
 }
 
@@ -7488,11 +7539,8 @@ if(!function_exists('__utm_cookie_name')){
     /**
      * @return string
      */
-    function __utm_cookie_name($name = ''){
-        if(!in_array($name, __utm_keys())){
-            return '';
-        }
-        return __str_prefix($name);
+    function __utm_cookie_name(){
+        return __str_prefix('utm_parameters');
     }
 }
 
@@ -7526,11 +7574,16 @@ if(!function_exists('__utm_params_from_cookie')){
      * @return array
      */
     function __utm_params_from_cookie(){
+        $name = __utm_cookie_name();
+        $value = '';
+        if(isset($_COOKIE[$name])){
+            $value = $_COOKIE[$name];
+        }
+        wp_parse_str($value, $values);
         $utm_params = [];
         foreach(__utm_keys() as $key){
-            $name = __utm_cookie_name($key);
-            if(isset($_COOKIE[$name])){
-                $utm_params[$key] = $_COOKIE[$name];
+            if(isset($values[$key])){
+                $utm_params[$key] = $values[$key];
             } else {
                 $utm_params[$key] = '';
             }

@@ -1,4 +1,4 @@
-var __singleton = class __Singleton {
+var __singleton = class __Singleton { // Hardcoded.
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -178,15 +178,14 @@ var __singleton = class __Singleton {
 	 * @return string
 	 */
 	rest_namespace(version = 1){
-		var namespace = '',
-            plugin_slug = '',
-            url = __caller_url(1); // One level above.
-        plugin_slug = __plugin_slug('', url);
-        if(!plugin_slug){
-            return '';
-        }
+        var namespace = '',
+            slug = '';
         version = __absint(version);
-        namespace = plugin_slug + '/v' + version;
+        if(version < 1){
+            version = 1;
+        }
+        slug = this.slug();
+        namespace = slug + '/v' + version;
         return namespace;
 	}
 
@@ -194,34 +193,29 @@ var __singleton = class __Singleton {
 	 * @return string
 	 */
 	rest_route(route = ''){
-		var plugin_slug = '',
-            search = '',
-            slug = '',
-            url = __caller_url(1); // One level above.
-        plugin_slug = __plugin_slug('', url);
-        if(!plugin_slug){
+        var search = '',
+            slug = '';
+        route = __sanitize_title(route);
+        if(!route){
             return '';
         }
         slug = this.slug();
-        search = plugin_slug + '-'; // With trailing dash.
-        if(slug.startsWith(search)){
-            slug = slug.replace(search, '');
+        search = slug + '-'; // With trailing dash.
+        if(route.startsWith(search)){
+            route = route.replace(search, '');
         }
-        if(!route){
-            return slug;
-        }
-        return __rtrim(slug, '/') + '/' + __ltrim(route, '/');
+        return route;
 	}
 
 	/**
 	 * @return string
 	 */
-	rest_url(route = ''){
+	rest_url(route = '', version = 1){
         route = this.rest_route(route);
         if(!route){
             return '';
         }
-        return (wpApiSettings.root + this.rest_namespace() + '/' + route);
+        return (wpApiSettings.root + this.rest_namespace(version) + '/' + route);
 	}
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

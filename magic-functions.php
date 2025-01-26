@@ -2,8 +2,8 @@
 /*
  * Plugin Name: Magic Functions
  * Plugin URI: https://magicfunctions.com
- * Description: A collection of magic functions for WordPress, plugins and themes.
- * Version: 0.8.14.1
+ * Description: A personal collection of magic functions for WordPress plugins and themes.
+ * Version: 0.1.25
  * Requires at least: 5.6
  * Requires PHP: 5.6
  * Author: Luis del Cid
@@ -32,21 +32,37 @@ if(!defined('ABSPATH')){
 // Wait for the `plugins_loaded` action hook.
 add_action('plugins_loaded', function(){
 
-    // Load PHP classes and functions.
-    $autoload_dir = plugin_dir_path(__FILE__) . 'autoload';
-    require_once($autoload_dir . '/singleton.php');
-    require_once($autoload_dir . '/functions.php');
+    // Include PHP classes and functions.
+    $plugin = plugin_dir_path(__FILE__);
+    require_once $plugin . 'init/class-response.php';
+    require_once $plugin . 'init/class-singleton.php';
+    require_once $plugin . 'init/functions.php';
 
     // Check for updates.
-    __build_update_checker('https://github.com/luisdelcid/magic-functions', __FILE__, 'magic-functions');
+    $checker = __plugin_update_checker(__FILE__);
+    if(is_wp_error($checker)){
+        __add_admin_notice($checker->get_error_message(), 'error');
+    }
 
-    // Load JavaScript classes and functions.
+    // Enqueue JavaScript classes and functions.
     __enqueue_functions();
 
-    // Include theme functions.
-    __include_theme_functions();
+    // Wait for the `after_setup_theme` action hook.
+    add_action('after_setup_theme', function(){
 
-    // Fires when magic is fully loaded.
+        // Load the functions for the active theme, for both parent and child theme if applicable.
+        foreach(wp_get_active_and_valid_themes() as $theme){
+        	if(file_exists($theme . '/magic-functions.php')){
+        		include_once $theme . '/magic-functions.php';
+        	}
+        }
+
+        // Fires once the theme has loaded.
+        do_action('after_magic_loaded');
+
+    }, 0); // Highest priority.
+
+    // Fires once the plugin has loaded.
     do_action('magic_loaded');
 
 }, 0); // Highest priority.

@@ -6,13 +6,81 @@
 //
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-if(!function_exists('__download_dir')){
+if(!function_exists('__add_hiding_rule')){
+    /**
+     * @return void
+     */
+    function __add_hiding_rule($args = []){
+        if(is_multisite()){
+    		return; // The rewrite rules are not for WordPress MU networks.
+    	}
+    	$pairs = [
+            'capability' => '',
+            'exclude_other_media' => [],
+            'exclude_public_media' => false,
+            'file' => '',
+    		'subdir' => '',
+    	];
+        $args = shortcode_atts($pairs, $args);
+    	$md5 = __md5($args);
+        if(__isset_array_cache('hide_uploads_subdir', $md5)){
+            return; // Prevent adding rule when already added.
+        }
+        __set_array_cache('hide_uploads_subdir', $md5, $args);
+    	$uploads_use_yearmonth_folders = false;
+    	$subdir = ltrim(untrailingslashit($args['subdir']), '/');
+    	if($subdir){
+    		$subdir = '/(' . $subdir . ')';
+    	} else {
+    		if(get_option('uploads_use_yearmonth_folders')){
+    			$subdir = '/(\d{4})/(\d{2})';
+    			$uploads_use_yearmonth_folders = true;
+    		} else {
+    			$subdir = '';
+    		}
+    	}
+    	$upload_dir = wp_get_upload_dir();
+    	if($upload_dir['error']){
+    		return;
+    	}
+        $atts = [];
+        $path = plugin_dir_path(dirname(__FILE__)) . 'shortinit/files.php'; // Hardcoded.
+    	$tmp = str_replace(wp_normalize_path(ABSPATH), '', wp_normalize_path($path));
+    	$parts = explode('/', $tmp);
+    	$levels = count($parts);
+    	$query = __dir_to_url($path);
+    	$regex = $upload_dir['baseurl'] . $subdir. '/(.+)';
+    	if($uploads_use_yearmonth_folders){
+    		$atts['yyyy'] = '$1';
+    		$atts['mm'] = '$2';
+    		$atts['file'] = '$3';
+    	} else {
+    		$atts['subdir'] = '$1';
+    		$atts['file'] = '$2';
+    	}
+    	$atts['levels'] = $levels;
+        $atts['md5'] = $md5;
+        $value = [
+            'capability' => $args['capability'],
+            'exclude_other_media' => $args['exclude_other_media'],
+            'exclude_public_media' => $args['exclude_public_media'],
+        ];
+        //$option = __str_prefix('hide_uploads_subdir_exclude_' . $md5);
+        $option = __str_prefix('hide_uploads_subdir_' . $md5);
+        //update_option($option, (array) $args['exclude'], 'no');
+        update_option($option, $value, 'no');
+    	$query = add_query_arg($atts, $query);
+    	__add_external_rule($regex, $query, $args['file']);
+    }
+}
+
+if(!function_exists('__dir')){
 	/**
 	 * @return string|WP_Error
 	 */
-	function __download_dir($subdir = ''){
-      $dir = 'magic-downloads'; // Hardcoded.
-      $subdir = ltrim($subdir, '/');
+	function __dir($subdir = ''){
+        $dir = 'magic-functions'; // Hardcoded.
+        $subdir = ltrim($subdir, '/');
 	    $subdir = untrailingslashit($subdir);
 	    if($subdir){
 	        $dir .= '/' . $subdir;
@@ -103,11 +171,12 @@ if(!function_exists('__enqueue_functions')){
 		__omni_enqueue('stackframe', 'https://cdn.jsdelivr.net/npm/stackframe@1.3.4/stackframe.min.js', [], '1.3.4');
         __omni_enqueue('error-stack-parser', 'https://cdn.jsdelivr.net/npm/error-stack-parser@2.1.4/error-stack-parser.min.js', ['stackframe'], '2.1.4');
 		$handle = 'magic-singleton'; // Hardcoded.
-        $file = plugin_dir_path(__FILE__) . 'singleton.js'; // Hardcoded.
+        $file = plugin_dir_path(__FILE__) . 'class-singleton.js'; // Hardcoded.
         __local_omni_enqueue($handle, $file);
         $handle = 'magic-functions'; // Hardcoded.
         $file = plugin_dir_path(__FILE__) . 'functions.js'; // Hardcoded.
-        $deps = ['error-stack-parser', 'jquery', 'magic-singleton', 'underscore', 'utils', 'wp-api', 'wp-hooks']; // Hardcoded.
+        $deps = ['error-stack-parser', 'jquery', 'underscore', 'utils', 'wp-api', 'wp-hooks'];
+        $deps[] = 'magic-singleton'; // Hardcoded.
         $l10n = [
             'mu_plugins_url' => __dir_to_url(wp_normalize_path(WPMU_PLUGIN_DIR)),
             'plugins_url' => __dir_to_url(wp_normalize_path(WP_PLUGIN_DIR)),
@@ -138,7 +207,7 @@ if(!function_exists('__error')){
 
 if(!function_exists('__get_instance')){
 	/**
-	 * @return __Singleton|WP_Error
+	 * @return __Singleton|WP_Error // Hardcoded.
 	 */
 	function __get_instance($class = ''){
 	    if(!$class){
@@ -158,28 +227,6 @@ if(!function_exists('__get_instance')){
 	}
 }
 
-if(!function_exists('__maybe_require_theme_functions')){
-	/**
-	 * This function MUST be called inside the 'after_setup_theme' action hook.
-	 *
-	 * @return void
-	 */
-	function __maybe_require_theme_functions(){
-		if(!doing_action('after_setup_theme')){ // Too early or too late.
-	        return;
-	    }
-		$require_theme_functions = (bool) __get_cache('require_theme_functions', false);
-		if(!$require_theme_functions){
-			return;
-		}
-	    $file = get_stylesheet_directory() . '/magic-functions.php';
-	    if(!file_exists($file)){
-	        return;
-	    }
-	    require_once($file);
-	}
-}
-
 if(!function_exists('__prefix')){
 	/**
 	 * @return string
@@ -189,12 +236,17 @@ if(!function_exists('__prefix')){
 	}
 }
 
-if(!function_exists('__shortinit_dir')){
+if(!function_exists('__remote_request')){
 	/**
-	 * @return string
+	 * @return object
 	 */
-	function __shortinit_dir(){
-		return plugin_dir_path(dirname(__FILE__)) . 'shortinit';
+	function __remote_request($method = '', $url = '', $args = []){
+        $args = wp_parse_args($args);
+		$args['method'] = $method;
+		$args = __sanitize_remote_args($args, $url);
+		$response = wp_remote_request($url, $args);
+        $response = new \__Response($response); // Hardcoded.
+        return $response;
 	}
 }
 
@@ -207,19 +259,60 @@ if(!function_exists('__slug')){
 	}
 }
 
-if(!function_exists('__upload_dir')){
+if(!function_exists('__toolbox')){
 	/**
-	 * @return string|WP_Error
+	 * @return __Toolbox
 	 */
-	function __upload_dir($subdir = ''){
-        $dir = 'magic-uploads'; // Hardcoded.
-        $subdir = ltrim($subdir, '/');
-	    $subdir = untrailingslashit($subdir);
-	    if($subdir){
-	        $dir .= '/' . $subdir;
-	    }
-		return __mkdir($dir);
+	function __toolbox($atts = []){
+        $md5 = __md5($atts);
+        if(__isset_array_cache('toolboxes', $md5)){
+			return __get_array_cache('toolboxes', $md5, null);
+		}
+        $toolbox = new \__Toolbox($atts);
+        __set_array_cache('toolboxes', $md5, $toolbox);
+        return $toolbox;
 	}
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// These functions’ access is marked private. This means they are not intended for use by plugin or theme developers, only in other core functions.
+//
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+if(!function_exists('__context_enqueue')){
+    /**
+     * This function MUST be called inside the '$context' action hook.
+     *
+     * @return string|WP_Error
+     */
+    function __context_enqueue($context = 'wp', $handle = '', $src = '', $deps = [], $ver = false, $args_media = true){
+        if(doing_action($context . '_enqueue_scripts')){ // Just in time.
+            return __enqueue_asset($handle, $src, $deps, $ver, $args_media);
+        }
+        if(did_action($context . '_enqueue_scripts')){ // Too late.
+            $error_msg = translate('Function %1$s was called <strong>incorrectly</strong>. %2$s %3$s');
+            $error_msg = sprintf($error_msg, __FUNCTION__, '', '');
+            $error_msg = trim($error_msg);
+            return __error($error_msg);
+        }
+        if(!$handle){
+            $error_msg = translate('The "%s" argument must be a non-empty string.');
+            $error_msg = sprintf($error_msg, 'handle');
+            return __error($error_msg);
+        }
+        $asset = [
+            'args_media' => $args_media,
+            'deps' => $deps,
+            'handle' => $handle,
+            'src' => $src,
+            'ver' => $ver,
+        ];
+        $md5 = __md5($asset);
+        __set_array_cache($context . '_assets', $md5, $asset);
+        __add_action_once($context . '_enqueue_scripts', '__maybe_enqueue_' . $context . '_assets'); // Hardcoded.
+        return $handle;
+    }
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -381,6 +474,9 @@ if(!function_exists('__list')){
 	 * @return array
 	 */
 	function __list($list = [], $index_key = ''){
+        if(!$index_key){
+            return $list;
+        }
 		$newlist = [];
 		foreach($list as $value){
 			if(is_object($value)){
@@ -755,11 +851,15 @@ if(!function_exists('__add_cloudinary_image_size')){
      * @return void
      */
     function __add_cloudinary_image_size($name = '', $options = []){
-    	$image_sizes = get_intermediate_image_sizes();
-    	$size = sanitize_title($name);
-    	if(in_array($size, $image_sizes)){
+        $default_sizes = ['thumbnail', 'medium', 'medium_large', 'large'];
+        $size = sanitize_title($name);
+    	if(in_array($size, $default_sizes)){
     		return; // Do not overwrite default sizes.
     	}
+        /*$additional_sizes = wp_get_additional_image_sizes();
+        if(in_array($size, $additional_sizes)){
+    		remove_image_size($size); // Do not overwrite additional sizes.
+    	}*/
         __add_filter_once('fl_builder_photo_sizes_select', '__maybe_cloudinary_fl_builder_photo_sizes_select');
         __add_filter_once('image_downsize', '__maybe_cloudinary_image_downsize', 10, 3);
         __add_filter_once('image_size_names_choose', '__maybe_cloudinary_image_size_names_choose');
@@ -942,6 +1042,12 @@ if(!function_exists('__cloudinary_file_candidate')){
         $image_file = get_attached_file($attachment_id);
         if(!file_exists($image_file)){
             $error_msg = translate('The attached file cannot be found.');
+            return __error($error_msg);
+        }
+        $type = wp_check_filetype($image_file);
+        if(!$type['ext'] or !$type['type']){
+            $error_msg = translate('The uploaded file is not a valid image. Please try again.');
+            $error_msg = __first_p($error_msg);
             return __error($error_msg);
         }
         $image_meta = wp_get_attachment_metadata($attachment_id);
@@ -1337,6 +1443,25 @@ if(!function_exists('__cf7_contact_form')){
 			wpcf7_contact_form($current_contact_form); // Restores the current contact form.
 		}
 		return $contact_form;
+	}
+}
+
+if(!function_exists('__cf7_container_post_id')){
+	/**
+	 * @return int
+	 */
+	function __cf7_container_post_id(){
+		$submission = __cf7_submission();
+        if(__cf7_is_submission($submission)){
+            return $submission->get_meta('container_post_id');
+        }
+        if(!__is_front()){
+            return 0;
+        }
+        if(!in_the_loop()){
+            return 0;
+        }
+        return get_the_ID();
 	}
 }
 
@@ -1829,6 +1954,79 @@ if(!function_exists('__cf7_get_contact_form_by')){
 	}
 }
 
+if(!function_exists('__cf7_get_submission')){
+	/**
+	 * @return array|WP_Error
+	 */
+	function __cf7_get_submission($meta_type = '', $object_id = 0){
+	    if(!in_array($meta_type, ['post', 'user'])){
+			$error_msg = sprintf(translate('Invalid parameter(s): %s'), 'meta_type') . '.';
+	        return __error($error_msg);
+	    }
+	    if('post' === $meta_type){
+	        $post = get_post($object_id);
+	        if(empty($post)){
+				$error_msg = translate('Invalid post ID.');
+	            return __error($error_msg);
+	        }
+	    } elseif('user' === $meta_type){
+	        $user = get_userdata($object_id);
+	        if(empty($user)){
+				$error_msg = translate('Invalid user ID.');
+	            return __error($error_msg);
+	        }
+	    }
+        $data = [
+            'fields' => [],
+            'files' => [],
+            'form' => [],
+            'meta' => [],
+            'submission' => [],
+        ];
+        $form_keys = ['demo_mode', 'id', 'locale', 'name', 'skip_mail', 'title'];
+        $meta_data = get_metadata($meta_type, $object_id);
+        $meta_keys = ['container_post_id', 'current_user_id', 'remote_ip', 'remote_port', 'timestamp', 'unit_tag', 'url', 'user_agent'];
+        $submission_keys = ['response', 'status'];
+        foreach($meta_data as $key => $values){
+            if(__str_starts_with('field_', $key)){
+                $meta_key = str_replace('field_', '', $key);
+                $data['fields'][$meta_key] = $values;
+                continue;
+            }
+            if(__str_starts_with('file_', $key)){
+                $meta_key = str_replace('file_', '', $key);
+                $data['files'][$meta_key] = $values;
+                continue;
+            }
+            if(__str_starts_with('form_', $key)){
+                $meta_key = str_replace('form_', '', $key);
+                if(!in_array($meta_key, $form_keys)){
+                    continue;
+                }
+                $data['form'][$meta_key] = $values;
+                continue;
+            }
+            if(__str_starts_with('meta_', $key)){
+                $meta_key = str_replace('meta_', '', $key);
+                if(!in_array($meta_key, $meta_keys)){
+                    continue;
+                }
+                $data['meta'][$meta_key] = $values;
+                continue;
+            }
+            if(__str_starts_with('submission_', $key)){
+                $meta_key = str_replace('submission_', '', $key);
+                if(!in_array($meta_key, $submission_keys)){
+                    continue;
+                }
+                $data['submission'][$meta_key] = $values;
+                continue;
+            }
+        }
+	    return $data;
+	}
+}
+
 if(!function_exists('__cf7_has_additional_setting')){
 	/**
 	 * @return bool
@@ -1856,6 +2054,19 @@ if(!function_exists('__cf7_has_posted_data')){
 	}
 }
 
+if(!function_exists('__cf7_has_shortcode_attr')){
+	/**
+	 * @return void
+	 */
+	function __cf7_has_shortcode_attr($name = '', $contact_form = null){
+        $contact_form = __cf7_contact_form($contact_form);
+		if(is_null($contact_form)){
+			return false;
+		}
+		return !is_null($contact_form->shortcode_attr($name));
+	}
+}
+
 if(!function_exists('__cf7_hash_exists')){
 	/**
 	 * Alias for wpcf7_get_contact_form_by_hash.
@@ -1878,6 +2089,222 @@ if(!function_exists('__cf7_hash_exists')){
 		$query = $wpdb->prepare($query, $like);
 		$post_id = $wpdb->get_var($query);
 		return (int) $post_id;
+	}
+}
+
+if(!function_exists('__cf7_insert_update_submission')){
+	/**
+	 * @return array|WP_Error
+	 */
+	function __cf7_insert_update_submission($atts = []){
+	    $pairs = [
+	        'action' => '',
+	        'contact_form' => null,
+	        'meta_type' => '',
+	        'object_id' => 0,
+	        'submission' => null,
+	        'upload_path' => '',
+	    ];
+	    $atts = shortcode_atts($pairs, $atts);
+	    extract($atts);
+	    if(!in_array($action, ['insert', 'update'])){
+			$error_msg = sprintf(translate('Invalid parameter(s): %s'), 'action') . '.';
+	        return __error($error_msg);
+	    }
+        $contact_form = __cf7_contact_form($contact_form);
+	    if(is_null($contact_form)){
+			$error_msg = translate('The requested contact form was not found.', 'contact-form-7');
+	        return __error($error_msg);
+	    }
+	    if(!in_array($meta_type, ['post', 'user'])){
+			$error_msg = sprintf(translate('Invalid parameter(s): %s'), 'meta_type') . '.';
+	        return __error($error_msg);
+	    }
+	    if('post' === $meta_type){
+	        $post = get_post($object_id);
+	        if(empty($post)){
+				$error_msg = translate('Invalid post ID.');
+	            return __error($error_msg);
+	        }
+	    } elseif('user' === $meta_type){
+	        $user = get_userdata($object_id);
+	        if(empty($user)){
+				$error_msg = translate('Invalid user ID.');
+	            return __error($error_msg);
+	        }
+	    }
+        $submission = __cf7_submission($submission);
+	    if(is_null($submission)){
+			$error_msg = sprintf(translate('%s (Invalid)'), 'WPCF7_Submission') . '.';
+	        return __error($error_msg);
+	    }
+        if($submission->get_meta('do_not_store')){
+            $error_msg = translate('Erase Personal Data') . ': ' . translate('Many plugins may collect or store personal data either in the WordPress database or remotely. Any Erase Personal Data request should delete data from plugins as well.');
+	        return __error($error_msg);
+        }
+        if('post' === $meta_type){
+	        $the_post = wp_is_post_revision($object_id);
+	        if($the_post){
+	            $object_id = $the_post; // Make sure meta is added to the post, not a revision.
+	        }
+	    }
+	    if('insert' === $action){
+	        if('post' === $meta_type){
+	            __set_cache('cf7_inserted_post_id', $object_id);
+	        } elseif('user' === $meta_type){
+	            __set_cache('cf7_inserted_user_id', $object_id);
+	        }
+	    } elseif('update' === $action){
+	        if('post' === $meta_type){
+	            __set_cache('cf7_updated_post_id', $object_id);
+	        } elseif('user' === $meta_type){
+	            __set_cache('cf7_updated_user_id', $object_id);
+	        }
+            if('post' === $meta_type){
+	            $postarr = [
+	                'ID' => $object_id,
+	            ];
+	            $field = 'post_content';
+	            $content = $submission->get_posted_data($field);
+	            if($content){
+	                $postarr['post_content'] = $content;
+	            }
+	            $field = 'post_excerpt';
+	            $excerpt = $submission->get_posted_data($field);
+	            if($excerpt){
+	                $postarr['post_excerpt'] = $excerpt;
+	            }
+	            $field = 'post_title';
+	            $title = $submission->get_posted_data($field);
+	            if($title){
+	                $postarr['post_title'] = $title;
+	            }
+				$save_post_revision = !has_filter('wp_save_post_revision_post_has_changed', '__return_true');
+				if($save_post_revision){ // Don't filter twice.
+					add_filter('wp_save_post_revision_post_has_changed', '__return_true');
+				}
+	            $post_id = wp_update_post($postarr, true); // Always save a revision.
+				if($save_post_revision){
+					remove_filter('wp_save_post_revision_post_has_changed', '__return_true');
+				}
+	            if(is_wp_error($post_id)){
+	                __set_cache('cf7_updated_post_id', 0);
+	                return $post_id;
+	            }
+	        } elseif('user' === $meta_type){
+	            $user_id = wp_update_user([
+	                'ID' => $object_id,
+	            ]);
+	            if(is_wp_error($user_id)){
+	                __set_cache('cf7_updated_user_id', 0);
+	                return $user_id;
+	            }
+	        }
+	    }
+        $contact_form_data = [
+            'demo_mode' => $contact_form->in_demo_mode(),
+            'id' => $contact_form->id(),
+	        'locale' => $contact_form->locale(),
+	        'name' => $contact_form->name(),
+	        'skip_mail' => __cf7_skip_mail($contact_form),
+            'title' => $contact_form->title(),
+        ];
+        foreach($contact_form_data as $key => $value){
+            $meta_key = 'form_' . $key;
+	        update_metadata($meta_type, $object_id, $meta_key, $value);
+	    }
+        $meta_data = [
+            'container_post_id' => $submission->get_meta('container_post_id'),
+			'current_user_id' => $submission->get_meta('current_user_id'),
+            'remote_ip' => $submission->get_meta('remote_ip'),
+			'remote_port' => $submission->get_meta('remote_port'),
+            'timestamp' => $submission->get_meta('timestamp'),
+			'unit_tag' => $submission->get_meta('unit_tag'),
+			'url' => $submission->get_meta('url'),
+			'user_agent' => $submission->get_meta('user_agent'),
+        ];
+        foreach($meta_data as $key => $value){
+            $meta_key = 'meta_' . $key;
+	        update_metadata($meta_type, $object_id, $meta_key, $value);
+	    }
+        $submission_data = [
+            'response' => $submission->get_response(),
+	        'status' => $submission->get_status(),
+        ];
+        foreach($submission_data as $key => $value){
+            $meta_key = 'submission_' . $key;
+	        update_metadata($meta_type, $object_id, $meta_key, $value);
+	    }
+	    $posted_data = $submission->get_posted_data(); // Filtered posted data.
+	    foreach($posted_data as $key => $value){
+            $meta_key = 'field_' . $key;
+	        if(is_array($value)){
+	            delete_metadata($meta_type, $object_id, $meta_key);
+	            foreach($value as $single){
+	                add_metadata($meta_type, $object_id, $meta_key, $single);
+	            }
+	        } else {
+	            update_metadata($meta_type, $object_id, $meta_key, $value);
+	        }
+	    }
+        $uploaded_files = $submission->uploaded_files();
+        if(empty($uploaded_files)){
+            return __cf7_get_submission($meta_type, $object_id);
+        }
+        if(empty($upload_path)){
+			$upload_path = __download_dir('cf7-uploads');
+			if(is_wp_error($upload_path)){
+				return $upload_path;
+			}
+		} else {
+	        $upload_path = __check_dir($upload_path);
+	        if(is_wp_error($upload_path)){
+	            return $upload_path;
+	        }
+			$upload_path = __check_upload_dir($upload_path);
+			if(is_wp_error($upload_path)){
+				return $upload_path;
+			}
+		}
+        $fs = __fs_direct();
+		if(is_wp_error($fs)){
+			return $fs;
+		}
+        if('post' === $meta_type){
+	        $post_id = $object_id;
+	    } else {
+	        $post_id = 0;
+	    }
+	    $uploaded_error = new \WP_Error;
+	    foreach($uploaded_files as $key => $value){
+            $meta_key = 'file_' . $key;
+	        foreach((array) $value as $tmp_name){
+	            $original_filename = wp_basename($tmp_name);
+	            $filename = wp_unique_filename($upload_path, $original_filename);
+	            $file = trailingslashit($upload_path) . $filename;
+	            if($fs->copy($tmp_name, $file)){
+	                $attachment_id = __sideload($file, $post_id, false);
+	                if(is_wp_error($attachment_id)){
+                        add_metadata($meta_type, $object_id, $meta_key, $attachment_id->get_error_message());
+	                    $uploaded_error->merge_from($attachment_id);
+	                } else {
+	                    add_metadata($meta_type, $object_id, $meta_key, $attachment_id);
+	                }
+	            } else {
+                    $error_msg = translate('The uploaded file could not be moved to %s.');
+	                $error_msg = sprintf($error_msg, $file);
+	                add_metadata($meta_type, $object_id, $meta_key, $error_msg);
+	                $error = __error($error_msg);
+	                $uploaded_error->merge_from($error);
+	            }
+	        }
+	        delete_metadata($meta_type, $object_id, $key); // Hash strings.
+	    }
+	    if($uploaded_error->has_errors()){
+            $error_msg = translate('Error:') . ' ' . implode(' ', array_map('__trailingdotit', $uploaded_error->get_error_messages()));
+            return __error($error_msg);
+	    }
+        return __cf7_get_submission($meta_type, $object_id);
 	}
 }
 
@@ -2054,39 +2481,6 @@ if(!function_exists('__cf7_message')){
 	}
 }
 
-if(!function_exists('__cf7_metadata')){
-	/**
-	 * @return array
-	 */
-	function __cf7_metadata($contact_form = null, $submission = null){
-		$contact_form = __cf7_contact_form($contact_form);
-		if(is_null($contact_form)){
-			return [];
-		}
-		$submission = __cf7_submission($submission);
-		if(is_null($submission)){
-			return [];
-		}
-		$metadata = [
-	        'contact_form_id' => $contact_form->id(),
-	        'contact_form_locale' => $contact_form->locale(),
-	        'contact_form_name' => $contact_form->name(),
-	        'contact_form_title' => $contact_form->title(),
-	        'container_post_id' => $submission->get_meta('container_post_id'),
-	        'current_user_id' => $submission->get_meta('current_user_id'),
-	        'remote_ip' => $submission->get_meta('remote_ip'),
-	        'remote_port' => $submission->get_meta('remote_port'),
-	        'submission_response' => $submission->get_response(),
-	        'submission_status' => $submission->get_status(),
-	        'timestamp' => $submission->get_meta('timestamp'),
-	        'unit_tag' => $submission->get_meta('unit_tag'),
-	        'url' => $submission->get_meta('url'),
-	        'user_agent' => $submission->get_meta('user_agent'),
-	    ];
-		return $metadata;
-	}
-}
-
 if(!function_exists('__cf7_missing_fields')){
 	/**
 	 * @return array
@@ -2211,194 +2605,6 @@ if(!function_exists('__cf7_sanitize_posted_data')){
 	}
 }
 
-if(!function_exists('__cf7_save_submission')){
-	/**
-	 * @return array|WP_Error
-	 */
-	function __cf7_save_submission($atts = []){
-	    $pairs = [
-	        'action' => '',
-	        'contact_form' => null,
-	        'meta_type' => '',
-	        'object_id' => 0,
-	        'submission' => null,
-	        'upload_path' => '',
-	    ];
-	    $atts = shortcode_atts($pairs, $atts);
-	    extract($atts);
-	    if(!in_array($action, ['insert', 'update'])){
-			$error_msg = sprintf(translate('Invalid parameter(s): %s'), 'action') . '.';
-	        return __error($error_msg);
-	    }
-	    if(!in_array($meta_type, ['post', 'user'])){
-			$error_msg = sprintf(translate('Invalid parameter(s): %s'), 'meta_type') . '.';
-	        return __error($error_msg);
-	    }
-	    if('post' === $meta_type){
-	        $post = get_post($object_id);
-	        if(empty($post)){
-				$error_msg = translate('Invalid post ID.');
-	            return __error($error_msg);
-	        }
-	    } elseif('user' === $meta_type){
-	        $user = get_userdata($object_id);
-	        if(empty($user)){
-				$error_msg = translate('Invalid user ID.');
-	            return __error($error_msg);
-	        }
-	    }
-	    $contact_form = __cf7_contact_form($contact_form);
-	    if(is_null($contact_form)){
-			$error_msg = translate('The requested contact form was not found.', 'contact-form-7');
-	        return __error($error_msg);
-	    }
-	    $submission = __cf7_submission($submission);
-	    if(is_null($submission)){
-			$error_msg = sprintf(translate('%s (Invalid)'), 'WPCF7_Submission') . '.';
-	        return __error($error_msg);
-	    }
-	    if(empty($upload_path)){
-			$upload_path = __download_dir('cf7-uploads');
-			if(is_wp_error($upload_path)){
-				return $upload_path;
-			}
-		} else {
-	        $upload_path = __check_dir($upload_path);
-	        if(is_wp_error($upload_path)){
-	            return $upload_path;
-	        }
-			$upload_path = __check_upload_dir($upload_path);
-			if(is_wp_error($upload_path)){
-				return $upload_path;
-			}
-		}
-	    if('insert' === $action){
-	        if('post' === $meta_type){
-	            __set_cache('cf7_inserted_post_id', $object_id);
-	        } elseif('user' === $meta_type){
-	            __set_cache('cf7_inserted_user_id', $object_id);
-	        }
-	    } elseif('update' === $action){
-	        if('post' === $meta_type){
-	            __set_cache('cf7_updated_post_id', $object_id);
-	        } elseif('user' === $meta_type){
-	            __set_cache('cf7_updated_user_id', $object_id);
-	        }
-	    }
-	    if('post' === $meta_type){
-	        $the_post = wp_is_post_revision($object_id);
-	        if($the_post){
-	            $object_id = $the_post; // Make sure meta is added to the post, not a revision.
-	        }
-	    }
-	    $metadata = __cf7_metadata($contact_form, $submission);
-	    if('insert' === $action){
-	        foreach($metadata as $key => $value){
-	            add_metadata($meta_type, $object_id, '_' . $key, $value, true);
-	        }
-	    } elseif('update' === $action){
-	        if('post' === $meta_type){
-	            $postarr = [
-	                'ID' => $object_id,
-	            ];
-	            $field = 'post_content';
-	            $content = $submission->get_posted_data($field);
-	            if($content){
-	                $postarr['post_content'] = $content;
-	            }
-	            $field = 'post_excerpt';
-	            $excerpt = $submission->get_posted_data($field);
-	            if($excerpt){
-	                $postarr['post_excerpt'] = $excerpt;
-	            }
-	            $field = 'post_title';
-	            $title = $submission->get_posted_data($field);
-	            if($title){
-	                $postarr['post_title'] = $title;
-	            }
-				$save_post_revision = !has_filter('wp_save_post_revision_post_has_changed', '__return_true');
-				if($save_post_revision){
-					add_filter('wp_save_post_revision_post_has_changed', '__return_true');
-				}
-	            $post_id = wp_update_post($postarr, true); // Always save a revision.
-				if($save_post_revision){
-					remove_filter('wp_save_post_revision_post_has_changed', '__return_true');
-				}
-	            if(is_wp_error($post_id)){
-	                __set_cache('cf7_updated_post_id', 0);
-	                return $post_id;
-	            }
-	        } elseif('user' === $meta_type){
-	            $user_id = wp_update_user([
-	                'ID' => $object_id,
-	            ]);
-	            if(is_wp_error($user_id)){
-	                __set_cache('cf7_updated_user_id', 0);
-	                return $user_id;
-	            }
-	        }
-	    }
-	    foreach($metadata as $key => $value){
-	        update_metadata($meta_type, $object_id, $key, $value);
-	    }
-	    $posted_data = $submission->get_posted_data(); // Filtered posted data.
-	    foreach($posted_data as $key => $value){
-	        if(is_array($value)){
-	            delete_metadata($meta_type, $object_id, $key);
-	            foreach($value as $single){
-	                add_metadata($meta_type, $object_id, $key, $single);
-	            }
-	        } else {
-	            update_metadata($meta_type, $object_id, $key, $value);
-	        }
-	    }
-	    if('post' === $meta_type){
-	        $post_id = $object_id;
-	    } else {
-	        $post_id = 0;
-	    }
-	    $fs = __fs_direct();
-		if(is_wp_error($fs)){
-			return $fs;
-		}
-	    $uploaded_error = new \WP_Error;
-		$uploaded_files = $submission->uploaded_files();
-	    foreach($uploaded_files as $key => $value){
-	        foreach((array) $value as $tmp_name){
-	            $original_filename = wp_basename($tmp_name);
-	            $filename = wp_unique_filename($upload_path, $original_filename);
-	            $file = trailingslashit($upload_path) . $filename;
-	            if($fs->copy($tmp_name, $file)){
-	                $attachment_id = __sideload($file, $post_id, false);
-	                if(!is_wp_error($attachment_id)){
-	                    add_metadata($meta_type, $object_id, 'uploaded_id_' . $key, $attachment_id);
-	                } else {
-	                    add_metadata($meta_type, $object_id, 'uploaded_error_' . $key, $attachment_id->get_error_message());
-	                    $uploaded_error->merge_from($attachment_id);
-	                }
-	            } else {
-	                $error_msg = sprintf(translate('The uploaded file could not be moved to %s.'), $file);
-	                add_metadata($meta_type, $object_id, 'uploaded_error_' . $key, $error_msg);
-	                $error = __error($error_msg);
-	                $uploaded_error->merge_from($error);
-	            }
-	        }
-	        delete_metadata($meta_type, $object_id, $key); // Hash strings.
-	    }
-	    if($uploaded_error->has_errors()){
-	        return $uploaded_error;
-	    }
-	    return [
-	        'action' => $action,
-	        'meta_type' => $meta_type,
-	        'object_id' => $object_id,
-	        'contact_form' => $contact_form,
-	        'submission' => $submission,
-	        'upload_path' => $upload_path,
-	    ];
-	}
-}
-
 if(!function_exists('__cf7_shortcode_attr')){
 	/**
 	 * Alias for WPCF7_ContactForm::shortcode_attr.
@@ -2413,6 +2619,48 @@ if(!function_exists('__cf7_shortcode_attr')){
 			return '';
 		}
 		return (string) $contact_form->shortcode_attr($name);
+	}
+}
+
+if(!function_exists('__cf7_shortcode_attr_is_false')){
+	/**
+	 * @return void
+	 */
+	function __cf7_shortcode_attr_is_false($name = '', $contact_form = null){
+        $value = __cf7_shortcode_attr($name, $contact_form);
+	    return __is_false($value);
+	}
+}
+
+if(!function_exists('__cf7_shortcode_attr_is_true')){
+	/**
+	 * @return void
+	 */
+	function __cf7_shortcode_attr_is_true($name = '', $contact_form = null){
+        $value = __cf7_shortcode_attr($name, $contact_form);
+	    return __is_true($value);
+	}
+}
+
+if(!function_exists('__cf7_shortcode_tag_output')){
+	/**
+	 * @return void
+	 */
+	function __cf7_shortcode_tag_output($callback = '', $priority = 10, $accepted_args = 1){
+        $hook_name = 'cf7_shortcode_tag_output';
+        $hook = [
+            'accepted_args' => $accepted_args,
+            'callback' => $callback, // Closure?
+            'hook_name' => $hook_name,
+            'priority' => $priority,
+        ];
+        $md5 = __md5($hook);
+        if(__isset_array_cache('cf7_hooks', $md5)){
+            return; // Prevent hook being added twice.
+        }
+        __set_array_cache('cf7_hooks', $md5, $hook);
+        __add_filter_once($hook_name, $callback, $priority, $accepted_args);
+        __add_filter_once('do_shortcode_tag', '__cf7_maybe_filter_shortcode_tag_output', 10, 4);
 	}
 }
 
@@ -2738,6 +2986,14 @@ if(!function_exists('__debug_context')){
         if(is_wp_error($debug_backtrace)){
             return $debug_backtrace;
         }
+        $context = [
+            'file' => $debug_backtrace['file'],
+            'name' => '',
+            'namespace_name' => '',
+            'reflector' => '',
+            'short_name' => '',
+            'type' => '',
+        ];
         if($debug_backtrace['class']){
             $context = __class_context($debug_backtrace['class']);
             if(is_wp_error($context)){
@@ -2745,7 +3001,12 @@ if(!function_exists('__debug_context')){
             }
             $context['type'] = 'class';
             return $context;
-        } elseif($debug_backtrace['function']){
+        }
+        if($debug_backtrace['function']){
+            if('{closure}' === $debug_backtrace['function']){
+                $context['type'] = 'closure';
+                return $context;
+            }
             $context = __function_context($debug_backtrace['function']);
             if(is_wp_error($context)){
                 return $context;
@@ -2753,14 +3014,6 @@ if(!function_exists('__debug_context')){
             $context['type'] = 'function';
             return $context;
         }
-        $context = [
-            'filename' => $debug_backtrace['file'],
-            'name' => '',
-            'namespace_name' => '',
-            'reflector' => '',
-            'short_name' => '',
-            'type' => '',
-        ];
         return $context;
     }
 }
@@ -2884,7 +3137,7 @@ if(!function_exists('__enqueue_ace')){
      *
      * @return string|WP_Error
      */
-    function __enqueue_ace($deps = [], $version = '1.35.4'){ // 2024-07-22T13:48:05Z
+    function __enqueue_ace($deps = [], $version = '1.36.2'){
         $base_path = 'https://cdn.jsdelivr.net/npm/ace-builds@' . $version . '/src-min';
         $handle = __enqueue_asset('ace', $base_path . '/ace.js', $deps, $version);
         if(is_wp_error($handle)){
@@ -2896,6 +3149,19 @@ if(!function_exists('__enqueue_ace')){
         }
         $data = "if(!_.isUndefined(ace)){ ace.config.set('basePath', '$base_path'); ace.require('ace/ext/language_tools'); }";
         wp_add_inline_script('ace', $data);
+        return $handle;
+    }
+}
+
+if(!function_exists('__enqueue_inputmask')){
+    /**
+     * This function MUST be called inside the 'admin_enqueue_scripts', 'login_enqueue_scripts' or 'wp_enqueue_scripts' action hooks.
+     *
+     * @return string|WP_Error
+     */
+    function __enqueue_inputmask($deps = [], $version = '5.0.9'){
+        $base_path = 'https://cdn.jsdelivr.net/npm/inputmask@' . $version . '/dist';
+        $handle = __enqueue_asset('inputmask', $base_path . '/query.inputmask.min.js', $deps, $version);
         return $handle;
     }
 }
@@ -3014,41 +3280,6 @@ if(!function_exists('__omni_enqueue')){
 //
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-if(!function_exists('__context_enqueue')){
-    /**
-     * This function MUST be called inside the '$context' action hook.
-     *
-     * @return string|WP_Error
-     */
-    function __context_enqueue($context = 'wp', $handle = '', $src = '', $deps = [], $ver = false, $args_media = true){
-        if(doing_action($context . '_enqueue_scripts')){ // Just in time.
-            return __enqueue_asset($handle, $src, $deps, $ver, $args_media);
-        }
-        if(did_action($context . '_enqueue_scripts')){ // Too late.
-            $error_msg = translate('Function %1$s was called <strong>incorrectly</strong>. %2$s %3$s');
-            $error_msg = sprintf($error_msg, __FUNCTION__, '', '');
-            $error_msg = trim($error_msg);
-            return __error($error_msg);
-        }
-        if(!$handle){
-            $error_msg = translate('The "%s" argument must be a non-empty string.');
-            $error_msg = sprintf($error_msg, 'handle');
-            return __error($error_msg);
-        }
-        $asset = [
-            'args_media' => $args_media,
-            'deps' => $deps,
-            'handle' => $handle,
-            'src' => $src,
-            'ver' => $ver,
-        ];
-        $md5 = __md5($asset);
-        __set_array_cache($context . '_assets', $md5, $asset);
-        __add_action_once($context . '_enqueue_scripts', '__maybe_enqueue_' . $context . '_assets');
-        return $handle;
-    }
-}
-
 if(!function_exists('__maybe_enqueue_admin_assets')){
     /**
 	 * This function MUST be called inside the 'admin_enqueue_scripts' action hook.
@@ -3130,6 +3361,17 @@ if(!function_exists('__exit_with_error')){
 		if(!$message){
 			$message = translate('Error');
 		}
+        if(is_int($args)){
+            $args = [
+                'response' => $args,
+            ];
+        }
+        if(is_int($title)){
+            if(!isset($args['response'])){
+                $args['response'] = $title;
+            }
+            $title = get_status_header_desc($title);
+        }
 		if(!$title){
 			$title = translate('Something went wrong.');
 		}
@@ -3152,14 +3394,11 @@ if(!function_exists('__exit_with_error')){
 	}
 }
 
-if(!function_exists('__is_error')){
+if(!function_exists('__seems_error')){
 	/**
 	 * @return bool|WP_Error
 	 */
-	function __is_error($data = []){
-		if(is_wp_error($data)){
-			return $data;
-		}
+	function __seems_error($data = []){
 		if(!__array_keys_exists(['code', 'data', 'message'], $data)){
 			return false;
 		}
@@ -3272,6 +3511,21 @@ if(!function_exists('__dir_to_url')){
 	 */
 	function __dir_to_url($path = ''){
 		return str_replace(wp_normalize_path(ABSPATH), site_url('/'), wp_normalize_path($path));
+	}
+}
+
+if(!function_exists('__download_dir')){
+	/**
+	 * @return string|WP_Error
+	 */
+	function __download_dir($subdir = ''){
+        $dir = 'downloads';
+        $subdir = ltrim($subdir, '/');
+	    $subdir = untrailingslashit($subdir);
+	    if($subdir){
+	        $dir .= '/' . $subdir;
+	    }
+		return __dir($dir);
 	}
 }
 
@@ -3646,6 +3900,21 @@ if(!function_exists('__test_uploaded_file')){
 	}
 }
 
+if(!function_exists('__upload_dir')){
+	/**
+	 * @return string|WP_Error
+	 */
+	function __upload_dir($subdir = ''){
+        $dir = 'uploads';
+        $subdir = ltrim($subdir, '/');
+	    $subdir = untrailingslashit($subdir);
+	    if($subdir){
+	        $dir .= '/' . $subdir;
+	    }
+		return __dir($dir);
+	}
+}
+
 if(!function_exists('__url_to_dir')){
 	/**
 	 * @return string
@@ -3752,74 +4021,6 @@ if(!function_exists('__maybe_hide_recaptcha_badge')){
 // Hide
 //
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-if(!function_exists('__add_hiding_rule')){
-    /**
-     * @return void
-     */
-    function __add_hiding_rule($args = []){
-        if(is_multisite()){
-    		return; // The rewrite rules are not for WordPress MU networks.
-    	}
-    	$pairs = [
-            'capability' => '',
-            'exclude_other_media' => [],
-            'exclude_public_media' => false,
-            'file' => '',
-    		'subdir' => '',
-    	];
-        $args = shortcode_atts($pairs, $args);
-    	$md5 = __md5($args);
-        if(__isset_array_cache('hide_uploads_subdir', $md5)){
-            return; // Prevent adding rule when already added.
-        }
-        __set_array_cache('hide_uploads_subdir', $md5, $args);
-    	$uploads_use_yearmonth_folders = false;
-    	$subdir = ltrim(untrailingslashit($args['subdir']), '/');
-    	if($subdir){
-    		$subdir = '/(' . $subdir . ')';
-    	} else {
-    		if(get_option('uploads_use_yearmonth_folders')){
-    			$subdir = '/(\d{4})/(\d{2})';
-    			$uploads_use_yearmonth_folders = true;
-    		} else {
-    			$subdir = '';
-    		}
-    	}
-    	$upload_dir = wp_get_upload_dir();
-    	if($upload_dir['error']){
-    		return;
-    	}
-        $atts = [];
-        $path = __shortinit_dir() . '/readfile.php';
-    	$tmp = str_replace(wp_normalize_path(ABSPATH), '', wp_normalize_path($path));
-    	$parts = explode('/', $tmp);
-    	$levels = count($parts);
-    	$query = __dir_to_url($path);
-    	$regex = $upload_dir['baseurl'] . $subdir. '/(.+)';
-    	if($uploads_use_yearmonth_folders){
-    		$atts['yyyy'] = '$1';
-    		$atts['mm'] = '$2';
-    		$atts['file'] = '$3';
-    	} else {
-    		$atts['subdir'] = '$1';
-    		$atts['file'] = '$2';
-    	}
-    	$atts['levels'] = $levels;
-        $atts['md5'] = $md5;
-        $value = [
-            'capability' => $args['capability'],
-            'exclude_other_media' => $args['exclude_other_media'],
-            'exclude_public_media' => $args['exclude_public_media'],
-        ];
-        //$option = __str_prefix('hide_uploads_subdir_exclude_' . $md5);
-        $option = __str_prefix('hide_uploads_subdir_' . $md5);
-        //update_option($option, (array) $args['exclude'], 'no');
-        update_option($option, $value, 'no');
-    	$query = add_query_arg($atts, $query);
-    	__add_external_rule($regex, $query, $args['file']);
-    }
-}
 
 if(!function_exists('__hide_others_media')){
     /**
@@ -5060,23 +5261,6 @@ if(!function_exists('__host_url')){
     }
 }
 
-if(!function_exists('__include_theme_functions')){
-	/**
-	 * @return void
-	 */
-	function __include_theme_functions(){
-		__set_cache('require_theme_functions', true);
-		if(doing_action('after_setup_theme')){ // Just in time.
-			__maybe_require_theme_functions();
-			return;
-		}
-		if(did_action('after_setup_theme')){ // Too late.
-			return;
-		}
-		__add_action_once('after_setup_theme', '__maybe_require_theme_functions');
-	}
-}
-
 if(!function_exists('__is_doing_heartbeat')){
 	/**
 	 * @return bool
@@ -5382,7 +5566,7 @@ if(!function_exists('__use_serializable_closure')){
 	/**
 	 * @return string|WP_Error
 	 */
-	function __use_serializable_closure($ver = '3.6.3'){ // 2022-01-27T09:35:39Z
+	function __use_serializable_closure($ver = '3.6.3'){
 		$key = 'serializable-closure-' . $ver;
 		if(__isset_cache($key)){
 			return (string) __get_cache($key, '');
@@ -5450,7 +5634,7 @@ if(!function_exists('__use_simple_html_dom')){
 	/**
 	 * @return bool|WP_Error
 	 */
-	function __use_simple_html_dom($ver = '1.9.1'){ // 2019-11-09T15:42:50Z
+	function __use_simple_html_dom($ver = '1.9.1'){
 		$key = 'simplehtmldom-' . $ver;
 		if(__isset_cache($key)){
 			return (string) __get_cache($key, '');
@@ -5505,7 +5689,7 @@ if(!function_exists('__use_xlsxwriter')){
 	/**
 	 * @return string|WP_Error
 	 */
-	function __use_xlsxwriter($ver = '0.39'){ // 2023-05-31T22:17:46Z
+	function __use_xlsxwriter($ver = '0.39'){
 		$key = 'xlsxwriter-' . $ver;
 	    if(__isset_cache($key)){
 	        return (string) __get_cache($key, '');
@@ -5640,7 +5824,6 @@ function __plugin_group(){
     $group = __plugin_prefix('', $file);
     return $group;
 }
-
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
@@ -5851,7 +6034,7 @@ if(!function_exists('__use_plugin_update_checker')){
 	/**
 	 * @return string|WP_Error
 	 */
-	function __use_plugin_update_checker($ver = '5.4'){ // 2024-02-24T09:56:49Z
+	function __use_plugin_update_checker($ver = '5.5'){
 		$key = 'plugin-update-checker-' . $ver;
 	    if(__isset_cache($key)){
 	        return (string) __get_cache($key, '');
@@ -6046,7 +6229,7 @@ if(!function_exists('__plugin_file')){
         }
         $file = trim($file, '/'); // Note: This may not actually be necessary.
         $parts = explode('/', $file);
-        if(count($parts) <= 2){ // The entire plugin consists of just a single PHP file, like Hello Dolly or file is the plugin's main file.
+        if(count($parts) < 2){ // The entire plugin consists of just a single PHP file, like Hello Dolly.
             if($mu_plugin or __is_plugin_active($file)){ // Plugin is a must-use plugin or plugin is active.
                 $file = $dir . '/' . $file;
                 __set_array_cache('plugin_files', $md5, $file);
@@ -6150,7 +6333,7 @@ if(!function_exists('__plugin_meta')){
     /**
      * @return string|WP_Error
      */
-    function __plugin_meta($key = '', $file = '', $markup = true, $translate = true){
+    function __plugin_meta($key = '', $file = '', $markup = false, $translate = false){
         if(!$file){
             $file = __caller_file(1); // One level above.
             if(is_wp_error($file)){
@@ -6226,20 +6409,26 @@ if(!function_exists('__plugin_update_checker')){
         if(is_wp_error($plugin_file)){
             return $plugin_file;
         }
+        $plugin_slug = __plugin_slug('', $plugin_file);
+        $plugin_uri = __plugin_meta('PluginURI', $plugin_file);
         $update_uri = __plugin_meta('UpdateURI', $plugin_file);
         if(is_wp_error($update_uri)){
-            return $update_uri;
+            if(is_wp_error($plugin_uri)){
+                return __error(translate('A valid URL was not provided.'));
+            }
+            $host_url = __host_url($update_uri);
+            if(!$host_url){
+                return __error(translate('Invalid URL Provided.'));
+            }
+            $update_uri = add_query_arg([
+                'action' => 'get_metadata',
+                'slug' => $plugin_slug,
+            ], path_join($host_url, 'wp-update-server'));
         }
-        $host_url = __host_url($update_uri);
-        if(!$host_url){
-            return __error(__('Invalid URL Provided.'));
+        if(!wp_http_validate_url($update_uri)){
+            return __error(translate('Invalid URL.'));
         }
-        $plugin_slug = __plugin_slug('', $plugin_file);
-        $metadata_url = add_query_arg([
-            'action' => 'get_metadata',
-            'slug' => $plugin_slug,
-        ], path_join($host_url, 'wp-update-server'));
-        $update_checker = __build_update_checker($metadata_url, $plugin_file, $plugin_slug);
+        $update_checker = __build_update_checker($update_uri, $plugin_file, $plugin_slug);
         if(is_wp_error($update_checker)){
             return $update_checker;
         }
@@ -6383,22 +6572,11 @@ if(!function_exists('__download_url')){
             $args['filename'] = $filename;
         }
 		$args['stream'] = true;
-		$response = wp_safe_remote_get($url, $args);
-		if(is_wp_error($response)){
-			unlink($filename);
-			return $response;
-		}
-		$code = wp_remote_retrieve_response_code($response);
-		if(!__is_success($code)){
-			$body = __get_file_sample($filename);
-			$message = __get_response_message($response);
-			$data = [
-				'body' => $body,
-				'code' => $code,
-			];
-			unlink($filename);
-			return __error($message, $data);
-		}
+        $response = __remote_get($url, $args);
+        if(!$response->is_success){
+            @unlink($filename);
+			return $response->wp_error;
+        }
 		return $filename;
 	}
 }
@@ -6621,41 +6799,6 @@ if(!function_exists('__json_decode')){
 	}
 }
 
-if(!function_exists('__parse_response')){
-	/**
-	 * @return array|string|WP_Error
-	 */
-	function __parse_response($response = []){
-		if(is_wp_error($response)){
-			return $response;
-		}
-		if(!__is_wp_http_requests_response($response)){
-            $error_msg = translate('Invalid data provided.');
-	 		return __error($error_msg, $response);
-	 	}
-		//return new \__Response($response);
-        $r = new \stdClass;
-        $r->body = trim(wp_remote_retrieve_body($response));
-        $r->code = absint(wp_remote_retrieve_response_code($response));
-        $r->cookies = wp_remote_retrieve_cookies($response);
-        $r->error = new \WP_Error;
-        $r->headers = wp_remote_retrieve_headers($response);
-        $r->is_json = __is_json_content_type($response);
-        $r->json_params = [];
-        $r->message = __get_response_message($response);
-        $r->raw_response = $response;
-        $r->status = __get_status_message($response);
-        $r->success = __is_success($r->code);
-        if($r->is_json){
-            $r->json_params = __json_decode($r->body, true);
-        }
-        if(!$r->success){
-            $r->error = __error($r->message, $r->raw_response);
-        }
-		return $r;
-	}
-}
-
 if(!function_exists('__remote_country')){
 	/**
 	 * @return string
@@ -6677,7 +6820,7 @@ if(!function_exists('__remote_country')){
 
 if(!function_exists('__remote_delete')){
 	/**
-	 * @return array|string|WP_Error
+	 * @return object
 	 */
 	function __remote_delete($url = '', $args = []){
 		return __remote_request('DELETE', $url, $args);
@@ -6686,7 +6829,7 @@ if(!function_exists('__remote_delete')){
 
 if(!function_exists('__remote_get')){
 	/**
-	 * @return array|string|WP_Error
+	 * @return object
 	 */
 	function __remote_get($url = '', $args = []){
 		return __remote_request('GET', $url, $args);
@@ -6695,7 +6838,7 @@ if(!function_exists('__remote_get')){
 
 if(!function_exists('__remote_head')){
 	/**
-	 * @return array|string|WP_Error
+	 * @return object
 	 */
 	function __remote_head($url = '', $args = []){
 		return __remote_request('HEAD', $url, $args);
@@ -6744,7 +6887,6 @@ if(!function_exists('__remote_ip')){
 	}
 }
 
-//pendiente
 if(!function_exists('__remote_lib')){
 	/**
 	 * @return string|WP_Error
@@ -6798,7 +6940,7 @@ if(!function_exists('__remote_lib')){
 
 if(!function_exists('__remote_options')){
 	/**
-	 * @return array|string|WP_Error
+	 * @return object
 	 */
 	function __remote_options($url = '', $args = []){
 		return __remote_request('OPTIONS', $url, $args);
@@ -6807,7 +6949,7 @@ if(!function_exists('__remote_options')){
 
 if(!function_exists('__remote_patch')){
 	/**
-	 * @return array|string|WP_Error
+	 * @return object
 	 */
 	function __remote_patch($url = '', $args = []){
 		return __remote_request('PATCH', $url, $args);
@@ -6816,7 +6958,7 @@ if(!function_exists('__remote_patch')){
 
 if(!function_exists('__remote_post')){
 	/**
-	 * @return array|string|WP_Error
+	 * @return object
 	 */
 	function __remote_post($url = '', $args = []){
 		return __remote_request('POST', $url, $args);
@@ -6825,29 +6967,16 @@ if(!function_exists('__remote_post')){
 
 if(!function_exists('__remote_put')){
 	/**
-	 * @return array|string|WP_Error
+	 * @return object
 	 */
 	function __remote_put($url = '', $args = []){
 		return __remote_request('PUT', $url, $args);
 	}
 }
 
-if(!function_exists('__remote_request')){
-	/**
-	 * @return array|WP_Error
-	 */
-	function __remote_request($method = '', $url = '', $args = []){
-		$args = wp_parse_args($args);
-		$args['method'] = $method;
-		$args = __sanitize_remote_args($args, $url);
-		$response = wp_remote_request($url, $args);
-		return __parse_response($response);
-	}
-}
-
 if(!function_exists('__remote_trace')){
 	/**
-	 * @return array|string|WP_Error
+	 * @return object
 	 */
 	function __remote_trace($url = '', $args = []){
 		return __remote_request('TRACE', $url, $args);
@@ -6860,6 +6989,9 @@ if(!function_exists('__sanitize_remote_args')){
 	 */
 	function __sanitize_remote_args($args = [], $url = ''){
 		$args = wp_parse_args($args);
+        if(isset($args['method'])){
+            $args['method'] = strtoupper($args['method']);
+        }
 		if(!__is_wp_http_request($args)){
 			return [
 				'body' => $args,
@@ -7135,18 +7267,46 @@ if(!function_exists('__implode_and')){
 	/**
 	 * @return string
 	 */
-	function __implode_and($array = [], $and = '&'){
+	function __implode_and($array = [], $separator = ''){
+        if(!$separator){
+            $separator = trim(sprintf(translate('%1$s and %2$s'), '', ''));
+        }
+		return __implode_comma($array, $separator);
+	}
+}
+
+if(!function_exists('__implode_comma')){
+	/**
+	 * @return string
+	 */
+	function __implode_comma($array = [], $separator = ''){
 		if(!is_array($array)){
 			return '';
 		}
 		if(empty($array)){
 			return '';
 		}
-		if(1 === count($array)){
+        if(1 === count($array)){
 			return $array[0];
 		}
+        $separator = trim($separator);
+        if(!$separator){
+            return implode(', ', $array);
+        }
 		$last = array_pop($array);
-		return implode(', ', $array) . ' ' . trim($and) . ' ' . $last;
+		return implode(', ', $array) . ' ' . $separator . ' ' . $last;
+	}
+}
+
+if(!function_exists('__implode_or')){
+	/**
+	 * @return string
+	 */
+	function __implode_or($array = [], $separator = ''){
+        if(!$separator){
+            $separator = trim(sprintf(translate('%1$s or %2$s'), '', ''));
+        }
+		return __implode_comma($array, $separator);
 	}
 }
 
@@ -7164,37 +7324,38 @@ if(!function_exists('__one_p')){
 	 * @return string
 	 */
 	function __one_p($text = '', $dot = true, $p = 'first'){
-		if(false === strpos($text, '.')){
-			if($dot){
-				$text .= '.';
-			}
-			return $text;
-		} else {
-			$text = sanitize_text_field($text);
-			$text = explode('.', $text);
-			$text = array_map('trim', $text);
-			$text = array_filter($text);
-			switch($p){
-				case 'first':
-					$text = array_shift($text);
-					break;
-				case 'last':
-					$text = array_pop($text);
-					break;
-				default:
-					$p = absint($p);
-					if(count($text) >= $p){
-						$p --;
-						$text = $text[$p];
-					} else {
-						$text = translate('Error');
-					}
-			}
-			if($dot){
-				$text .= '.';
-			}
-			return $text;
-		}
+        $text = sanitize_text_field($text);
+        $matches = preg_split('/[\.\?!]+/', $text, -1, PREG_SPLIT_NO_EMPTY|PREG_SPLIT_OFFSET_CAPTURE);
+        switch($p){
+            case 'first':
+                $match = array_shift($matches);
+                break;
+            case 'last':
+                $match = array_pop($matches);
+                break;
+            default:
+                $p = absint($p);
+                if(count($matches) >= $p){
+                    $p --;
+                    $match = $matches[$p];
+                } else {
+                    $error_msg = translate('Error');
+                    if($dot){
+                        $error_msg .= '.';
+                    }
+                    return $error_msg;
+                }
+        }
+        $one = trim($match[0]);
+        if(!$dot){
+            return $one;
+        }
+        $dot_chr = substr($text, strlen($match[0]) + $match[1], 1);
+        if(empty($dot_chr)){
+            $dot_chr = '.';
+        }
+        $one .= $dot_chr;
+        return $one;
 	}
 }
 
@@ -7222,6 +7383,24 @@ if(!function_exists('__remove_whitespaces')){
 	 */
 	function __remove_whitespaces($str = ''){
 		return trim(preg_replace('/[\r\n\t ]+/', ' ', $str));
+	}
+}
+
+if(!function_exists('__str_ends_with')){
+	/**
+     * Polyfill for `str_ends_with()` function added in PHP 8.0 and WordPress 5.9.
+     *
+	 * @return string
+	 */
+	function __str_ends_with($haystack = '', $needle = ''){
+        if(function_exists('str_ends_with')){
+            return str_ends_with($haystack, $needle);
+        }
+		if('' === $haystack){
+			return '' === $needle;
+		}
+        $len = strlen($needle);
+        return substr($haystack, -$len, $len) === $needle;
 	}
 }
 
@@ -7355,35 +7534,34 @@ if(!function_exists('__str_starts_with')){
 	}
 }
 
+if(!function_exists('__trailingdotit')){
+	/**
+	 * @return string
+	 */
+	function __trailingdotit($text = ''){
+        $text = sanitize_textarea_field($text);
+		if(__str_ends_with($text, '.') or __str_ends_with($text, '?') or __str_ends_with($text, '!')){
+			return $text;
+		}
+		return $text . '.';
+	}
+}
+
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
 // TGM Plugin Activation
 //
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-if(!function_exists('__tgmpa')){
-	/**
-	 * This function MUST be called inside the 'tgmpa_register' action hook.
-	 *
-	 * @return void
-	 */
-	function __tgmpa($plugins = [], $config = []){
-		if(!doing_action('tgmpa_register')){
-			return; // Too early or too late.
-		}
-		$lib = __use_tgm_plugin_activation();
-		if(is_wp_error($lib)){
-			return; // Silence is golden.
-		}
-		tgmpa($plugins, $config);
-	}
-}
-
 if(!function_exists('__tgmpa_register')){
 	/**
 	 * @return void
 	 */
 	function __tgmpa_register($plugins = [], $config = []){
+        $lib = __use_tgm_plugin_activation();
+		if(is_wp_error($lib)){
+			return; // Silence is golden.
+		}
 		if(doing_action('tgmpa_register')){ // Just in time.
 			__tgmpa($plugins, $config);
 			return;
@@ -7422,11 +7600,25 @@ if(!function_exists('__maybe_tgmpa_register')){
 	}
 }
 
+if(!function_exists('__tgmpa')){
+	/**
+	 * This function MUST be called inside the 'tgmpa_register' action hook.
+	 *
+	 * @return void
+	 */
+	function __tgmpa($plugins = [], $config = []){
+		if(!doing_action('tgmpa_register')){
+			return; // Too early or too late.
+		}
+		tgmpa($plugins, $config);
+	}
+}
+
 if(!function_exists('__use_tgm_plugin_activation')){
 	/**
 	 * @return bool|WP_Error
 	 */
-	function __use_tgm_plugin_activation($ver = '2.6.1'){ // 2012-03-30T16:09:35Z
+	function __use_tgm_plugin_activation($ver = '2.6.1'){
 		$key = 'tgm-plugin-activation-' . $ver;
 		if(__isset_cache($key)){
 			return (string) __get_cache($key, '');
@@ -7726,13 +7918,10 @@ if(!function_exists('__zoom_access_token')){
             'timeout' => 10,
         ];
         $response = __remote_post($url, $args);
-        if(is_wp_error($response)){
-            return $response;
+        if(!$response->is_success){
+            return $response->wp_error;
         }
-        if(!$response->is_success()){
-            return __error($response->message(), $response->raw_response());
-        }
-        $access_token = $response->json_param('access_token');
+        $access_token = $response->json_params['access_token'];
         __set_cache('zoom_access_token', $access_token);
         return $access_token;
     }
@@ -7808,7 +7997,7 @@ if(!function_exists('__zoom_oauth_token')){
 
 if(!function_exists('__zoom_delete')){
     /**
-     * @return Magic_Response|WP_Error
+     * @return object
      */
     function __zoom_delete($endpoint = '', $args = [], $timeout = 10){
         return __zoom_request('DELETE', $endpoint, $args, $timeout);
@@ -7817,7 +8006,7 @@ if(!function_exists('__zoom_delete')){
 
 if(!function_exists('__zoom_get')){
     /**
-     * @return Magic_Response|WP_Error
+     * @return object
      */
     function __zoom_get($endpoint = '', $args = [], $timeout = 10){
         return __zoom_request('GET', $endpoint, $args, $timeout);
@@ -7826,7 +8015,7 @@ if(!function_exists('__zoom_get')){
 
 if(!function_exists('__zoom_patch')){
     /**
-     * @return Magic_Response|WP_Error
+     * @return object
      */
     function __zoom_patch($endpoint = '', $args = [], $timeout = 10){
         return __zoom_request('PATCH', $endpoint, $args, $timeout);
@@ -7835,7 +8024,7 @@ if(!function_exists('__zoom_patch')){
 
 if(!function_exists('__zoom_post')){
     /**
-     * @return Magic_Response|WP_Error
+     * @return object
      */
     function __zoom_post($endpoint = '', $args = [], $timeout = 10){
         return __zoom_request('POST', $endpoint, $args, $timeout);
@@ -7844,7 +8033,7 @@ if(!function_exists('__zoom_post')){
 
 if(!function_exists('__zoom_put')){
     /**
-     * @return Magic_Response|WP_Error
+     * @return object
      */
     function __zoom_put($endpoint = '', $args = [], $timeout = 10){
         return __zoom_request('PUT', $endpoint, $args, $timeout);
@@ -7853,7 +8042,7 @@ if(!function_exists('__zoom_put')){
 
 if(!function_exists('__zoom_request')){
     /**
-     * @return Magic_Response|WP_Error
+     * @return object
      */
     function __zoom_request($method = '', $endpoint = '', $args = [], $timeout = 10){
         $oauth_token = __zoom_oauth_token();
@@ -7875,4 +8064,255 @@ if(!function_exists('__zoom_request')){
         ];
         return __remote_request($method, $url, $args);
     }
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// GitHub
+//
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+if(!function_exists('__github_api_token')){
+    /**
+     * @return void
+     */
+    function __github_api_token($token = ''){
+        if(!$token){
+            return;
+        }
+		__set_cache('github_api_token', $token);
+		__add_filter_once('http_request_args', '__maybe_add_github_api_token', 10, 2);
+    }
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// These functions’ access is marked private. This means they are not intended for use by plugin or theme developers, only in other core functions.
+//
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+if(!function_exists('__maybe_add_github_api_token')){
+	/**
+	 * This function MUST be called inside the 'http_request_args' filter hook.
+	 *
+	 * @return array
+	 */
+	function __maybe_add_github_api_token($parsed_args, $url){
+		if(!doing_filter('http_request_args')){
+	        return $parsed_args;
+	    }
+		$token = (string) __get_cache('github_api_token', '');
+		if(!$token){
+            return $parsed_args;
+        }
+        if(0 !== strpos($url, 'https://api.github.com/')){
+            return $parsed_args;
+        }
+        if(!isset($parsed_args['headers'])){
+            $parsed_args['headers'] = [];
+        }
+        $parsed_args['headers']['Authorization'] = 'token ' . $token;
+		return $parsed_args;
+	}
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// Meta Box
+//
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+if(!function_exists('__mb_image_switch')){
+	/**
+	 * @return array|WP_Error
+	 */
+	function __mb_image_switch($id = '', $args = []){
+        if(!$id){
+            $error_msg = translate('The "%s" argument must be a non-empty string.');
+            $error_msg = sprintf($error_msg, 'id');
+            return __error($error_msg);
+        }
+        $defaults = [
+            'columns' => 4,
+            'icon' => 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyBpZD0iTGF5ZXJfMSIgZGF0YS1uYW1lPSJMYXllciAxIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj4KICA8cGF0aCBkPSJNNTEyLDMwMS4xOGgtNjUuNjZjLTUuMTIsMjEuMDgtMTMuMjUsNDAuNjYtMjQuNCw1OC4xM2w0Ni4zOCw0Ni4zOC02My4yNSw2My4yNS00Ni4zOC00Ni4zOGMtMTcuNDcsMTAuODQtMzcuMDQsMTguOTctNTcuNTIsMjMuNzl2NjUuNjZoLTkwLjM1di02NS42NmMtMjAuNDgtNC44Mi00MC4wNi0xMi45NS01Ny41Mi0yMy43OWwtNDYuMzgsNDYuMzgtNjMuODUtNjMuODUsNDYuMzgtNDYuMzhjLTEwLjg0LTE3LjQ3LTE4Ljk3LTM3LjA0LTIzLjc5LTU3LjUySDB2LTg5LjQ1aDY1LjM2YzQuODItMjEuMDgsMTMuMjUtNDAuNjYsMjQuMDktNTguNDNsLTQ2LjM4LTQ2LjM4LDYzLjI1LTYzLjI1LDQ2LjM4LDQ2LjM4YzE3LjQ3LTExLjE0LDM3LjM1LTE5LjI4LDU4LjEzLTI0LjRWMGg5MC4zNXY2NS42NmMyMC40OCw0LjgyLDQwLjA2LDEyLjk1LDU3LjUyLDIzLjc5bDQ2LjM4LTQ2LjM4LDYzLjg1LDYzLjg1LTQ2LjM4LDQ2LjM4YzEwLjg0LDE3Ljc3LDE5LjI4LDM3LjM1LDI0LjA5LDU4LjQzaDY1LjM2djg5LjQ1Wk0yNTYsMzQ2LjM1YzUwLDAsOTAuMzUtNDAuMzYsOTAuMzUtOTAuMzVzLTQwLjM2LTkwLjM1LTkwLjM1LTkwLjM1LTkwLjM1LDQwLjM2LTkwLjM1LDkwLjM1LDQwLjM2LDkwLjM1LDkwLjM1LDkwLjM1WiIvPgo8L3N2Zz4=',
+            'name' => '',
+        ];
+        $args = wp_parse_args($args, $defaults);
+        if(!$args['name']){
+            $args['name'] = $id;
+        }
+        $field = [
+            'after' => '</div></div></div>',
+            'before' => '<div style="padding: 6px; margin: 6px 0 0;"><div style="background-color: #f8f9fa; border: 1px solid rgba(0, 0, 0, 0.125); border-radius: 0.25rem; padding: 20px 20px 8px;"><div style="text-align: center;"><img src="' . $args['icon'] . '" style="max-height: 40px;"></div><div style="text-align: center;"><p>' . $args['name'] . '</p></div><div style="text-align: center;">',
+            'columns' => $args['columns'],
+            'id' => $id,
+            'on_label' => translate('Yes'),
+            'off_label' => translate('No'),
+            'style' => 'square',
+            'type' => 'switch',
+        ];
+        return $field;
+    }
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// Other
+//
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+if(!function_exists('__is_front')){
+	/**
+	 * @return bool
+	 */
+    function __is_front(){
+        global $wp_query;
+        if(is_admin()){
+            return false; // The current request is for an administrative interface page.
+        }
+        if(wp_doing_ajax()){
+            return false; // The current request is a WordPress Ajax request.
+        }
+        if(wp_is_serving_rest_request()){
+            return false; // WordPress is currently serving a REST API request.
+        }
+        if(wp_is_json_request()){
+            return false; // The current request is a JSON request, or is expecting a JSON response.
+        }
+        if(wp_is_jsonp_request()){
+            return false; // The current request is a JSONP request, or is expecting a JSONP response.
+        }
+        if(defined('XMLRPC_REQUEST') and XMLRPC_REQUEST){
+            return false; // The current request is a WordPress XML-RPC request.
+        }
+        if(wp_is_xml_request() or isset($wp_query) and (function_exists('is_feed') and is_feed() or function_exists('is_comment_feed') and is_comment_feed() or function_exists('is_trackback') and is_trackback())){
+            return false; // The current request is an XML request, or is expecting an XML response.
+        }
+        return true;
+    }
+}
+
+if(!function_exists('__get_the_id')){
+	/**
+	 * @return int
+	 */
+    function __get_the_id(){
+        if(in_the_loop()){
+            return get_the_ID();
+        }
+        return __get_the_id_early();
+    }
+}
+
+if(!function_exists('__get_the_id_early')){
+	/**
+	 * @return int
+	 */
+    function __get_the_id_early(){
+        if(!__is_front()){
+            return 0;
+        }
+        if(!isset($_SERVER['HTTP_HOST'])){
+            return 0;
+        }
+        // Build the URL in the address bar.
+        $requested_url = (is_ssl() ? 'https://' : 'http://');
+        $requested_url .= $_SERVER['HTTP_HOST'];
+        if(isset($_SERVER['REQUEST_URI'])){
+            $requested_url .= $_SERVER['REQUEST_URI'];
+        }
+        return url_to_postid($requested_url);
+    }
+}
+
+if(!function_exists('__bb_avoid_full_size_images')){
+	/**
+	 * @return void
+	 */
+    function __bb_avoid_full_size_images(){
+        __add_filter_once('fl_builder_photo_sizes_select', '__maybe_bb_avoid_full_size_images', 11);
+    }
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// These functions’ access is marked private. This means they are not intended for use by plugin or theme developers, only in other core functions.
+//
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+if(!function_exists('__maybe_bb_avoid_full_size_images')){
+	/**
+	 * @return array
+	 */
+	function __maybe_bb_avoid_full_size_images($sizes){
+        if(!isset($sizes['full'])){
+            return $sizes;
+        }
+        if(1 === count($sizes)){
+            return $sizes;
+        }
+        unset($sizes['full']);
+        return $sizes;
+	}
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// Nonces
+//
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+if(!function_exists('__create_nonce_guest')){
+	/**
+	 * @return string
+	 */
+	function __create_nonce_guest($action = -1){
+        $i = wp_nonce_tick($action);
+        $token = __get_session_token_guest();
+        $uid = 0;
+        return substr(wp_hash($i . '|' . $action . '|' . $uid . '|' . $token, 'nonce'), -12, 10);
+	}
+}
+
+if(!function_exists('__get_session_token_guest')){
+	/**
+	 * @return string
+	 */
+	function __get_session_token_guest($action = -1){
+        return '';
+	}
+}
+
+if(!function_exists('__nonce_url_guest')){
+	/**
+	 * @return string
+	 */
+	function __nonce_url_guest($actionurl = '', $action = -1, $name = '_wpnonce'){
+        $actionurl = str_replace('&amp;', '&', $actionurl);
+        return esc_html(add_query_arg($name, __create_nonce_guest($action), $actionurl));
+	}
+}
+
+if(!function_exists('__verify_nonce_guest')){
+	/**
+	 * @return bool
+	 */
+	function __verify_nonce_guest($nonce = '', $action = -1){
+        $nonce = (string) $nonce;
+    	if(empty($nonce)){
+    		return false;
+    	}
+        $i = wp_nonce_tick($action);
+        $token = __get_session_token_guest();
+    	$uid = 0;
+    	$expected = substr(wp_hash($i . '|' . $action . '|' . $uid . '|' . $token, 'nonce'), -12, 10);
+    	if(hash_equals($expected, $nonce)){
+    		return 1; // Nonce generated 0-12 hours ago
+    	}
+    	$expected = substr(wp_hash(($i - 1) . '|' . $action . '|' . $uid . '|' . $token, 'nonce'), -12, 10);
+    	if(hash_equals($expected, $nonce)){
+    		return 2; // Nonce generated 12-24 hours ago
+    	}
+    	return false; // Invalid nonce
+	}
 }

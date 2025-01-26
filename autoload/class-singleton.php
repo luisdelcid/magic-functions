@@ -1,7 +1,7 @@
 <?php
 
-if(!class_exists('__Singleton')){
-    class __Singleton {
+if(!class_exists('__Singleton')){ // Hardcoded.
+    class __Singleton { // Hardcoded.
 
         // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -23,8 +23,6 @@ if(!class_exists('__Singleton')){
         }
 
         // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-        protected $rest_version = 1;
 
         /**
          * @return void
@@ -209,7 +207,7 @@ if(!class_exists('__Singleton')){
         public function rest_namespace($version = 0){
             $version = __absint($version);
             if($version < 1){
-                $version = $this->rest_version;
+                $version = 1;
             }
             $slug = $this->slug();
             $namespace = $slug . '/v' . $version;
@@ -226,22 +224,89 @@ if(!class_exists('__Singleton')){
             }
             $slug = $this->slug();
             $search = $slug . '-'; // With trailing dash.
-            if(str_starts_with($route, $search)){
+            if(__str_starts_with($route, $search)){
                 $route = str_replace($search, '', $route);
             }
             return $route;
         }
 
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        //
+        // Cache
+        //
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
         /**
-         * @return int
+         * @return mixed
          */
-        public function rest_version($version = 0){
-            $version = __absint($version);
-            if($version < 1){
-                return $this->rest_version;
+        public function get_array_cache($array_key = '', $key = '', $default = null){
+            $array = (array) $this->get_cache($array_key, []);
+            return isset($array[$key]) ? $array[$key] : $default;
+        }
+
+        /**
+         * @return mixed
+         */
+        public function get_cache($key = '', $default = null){
+            $group = $this->prefix();
+            $value = wp_cache_get($key, $group, false, $found);
+            if($found){
+                return $value;
             }
-            $this->rest_version = $version;
-            return $version;
+            return $default;
+        }
+
+        /**
+         * @return bool
+         */
+        public function isset_array_cache($array_key = '', $key = ''){
+            $array = (array) $this->get_cache($array_key, []);
+            return isset($array[$key]);
+        }
+
+        /**
+         * @return bool
+         */
+        public function isset_cache($key = ''){
+            $group = $this->prefix();
+            $value = wp_cache_get($key, $group, false, $found);
+            return $found;
+        }
+
+        /**
+         * @return bool
+         */
+        public function set_array_cache($array_key = '', $key = '', $data = null){
+            $array = (array) $this->get_cache($array_key, []);
+            $array[$key] = $data;
+            return $this->set_cache($array_key, $array);
+        }
+
+        /**
+         * @return bool
+         */
+        public function set_cache($key = '', $data = null){
+            $group = $this->prefix();
+            return wp_cache_set($key, $data, $group);
+        }
+
+        /**
+         * @return bool
+         */
+        public function unset_array_cache($array_key = '', $key = ''){
+            $array = (array) $this->get_cache($array_key, []);
+            if(isset($array[$key])){
+                unset($array[$key]);
+            }
+            return $this->set_cache($array_key, $array);
+        }
+
+        /**
+         * @return bool
+         */
+        public function unset_cache($key = ''){
+            $group = $this->prefix();
+            return wp_cache_delete($key, $group);
         }
 
         // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

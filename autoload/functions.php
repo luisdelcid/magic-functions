@@ -8193,107 +8193,6 @@ if(!function_exists('__mb_image_switch')){
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
-// Other
-//
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-if(!function_exists('__is_front')){
-	/**
-	 * @return bool
-	 */
-    function __is_front(){
-        global $wp_query;
-        if(is_admin()){
-            return false; // The current request is for an administrative interface page.
-        }
-        if(wp_doing_ajax()){
-            return false; // The current request is a WordPress Ajax request.
-        }
-        if(wp_is_serving_rest_request()){
-            return false; // WordPress is currently serving a REST API request.
-        }
-        if(wp_is_json_request()){
-            return false; // The current request is a JSON request, or is expecting a JSON response.
-        }
-        if(wp_is_jsonp_request()){
-            return false; // The current request is a JSONP request, or is expecting a JSONP response.
-        }
-        if(defined('XMLRPC_REQUEST') and XMLRPC_REQUEST){
-            return false; // The current request is a WordPress XML-RPC request.
-        }
-        if(wp_is_xml_request() or isset($wp_query) and (function_exists('is_feed') and is_feed() or function_exists('is_comment_feed') and is_comment_feed() or function_exists('is_trackback') and is_trackback())){
-            return false; // The current request is an XML request, or is expecting an XML response.
-        }
-        return true;
-    }
-}
-
-if(!function_exists('__get_the_id')){
-	/**
-	 * @return int
-	 */
-    function __get_the_id(){
-        if(in_the_loop()){
-            return get_the_ID();
-        }
-        return __get_the_id_early();
-    }
-}
-
-if(!function_exists('__get_the_id_early')){
-	/**
-	 * @return int
-	 */
-    function __get_the_id_early(){
-        if(!__is_front()){
-            return 0;
-        }
-        if(!isset($_SERVER['HTTP_HOST'])){
-            return 0;
-        }
-        // Build the URL in the address bar.
-        $requested_url = (is_ssl() ? 'https://' : 'http://');
-        $requested_url .= $_SERVER['HTTP_HOST'];
-        if(isset($_SERVER['REQUEST_URI'])){
-            $requested_url .= $_SERVER['REQUEST_URI'];
-        }
-        return url_to_postid($requested_url);
-    }
-}
-
-if(!function_exists('__bb_avoid_full_size_images')){
-	/**
-	 * @return void
-	 */
-    function __bb_avoid_full_size_images(){
-        __add_filter_once('fl_builder_photo_sizes_select', '__maybe_bb_avoid_full_size_images', 11);
-    }
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//
-// These functions’ access is marked private. This means they are not intended for use by plugin or theme developers, only in other core functions.
-//
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-if(!function_exists('__maybe_bb_avoid_full_size_images')){
-	/**
-	 * @return array
-	 */
-	function __maybe_bb_avoid_full_size_images($sizes){
-        if(!isset($sizes['full'])){
-            return $sizes;
-        }
-        if(1 === count($sizes)){
-            return $sizes;
-        }
-        unset($sizes['full']);
-        return $sizes;
-	}
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//
 // Nonces
 //
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -8350,5 +8249,131 @@ if(!function_exists('__verify_nonce_guest')){
     		return 2; // Nonce generated 12-24 hours ago
     	}
     	return false; // Invalid nonce
+	}
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// Miscellaneous
+//
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+if(!function_exists('__bb_avoid_full_size_images')){
+	/**
+	 * @return void
+	 */
+    function __bb_avoid_full_size_images(){
+        __add_filter_once('fl_builder_photo_sizes_select', '__maybe_bb_avoid_full_size_images', 11);
+    }
+}
+
+if(!function_exists('__exec')){
+    /**
+     * @return array|WP_Error
+     */
+    function __exec($command = ''){
+        $output = [];
+		if(!function_exists('exec')){
+			$error_msg = translate('Function %s used incorrectly in PHP.');
+			$error_msg = sprintf($error_msg, 'exec');
+			return __error($error_msg);
+		}
+        try {
+            $result = exec($command, $output);
+        } catch(\Throwable $t){
+            $result = __error($t->getMessage());
+        } catch(\Exception $e){
+            $result = __error($e->getMessage());
+        }
+        if(is_wp_error($result)){
+            return $result;
+        }
+        return $output;
+    }
+}
+
+if(!function_exists('__get_the_id')){
+	/**
+	 * @return int
+	 */
+    function __get_the_id(){
+        if(in_the_loop()){
+            return get_the_ID();
+        }
+        return __get_the_id_early();
+    }
+}
+
+if(!function_exists('__get_the_id_early')){
+	/**
+	 * @return int
+	 */
+    function __get_the_id_early(){
+        if(!__is_front()){
+            return 0;
+        }
+        if(!isset($_SERVER['HTTP_HOST'])){
+            return 0;
+        }
+        // Build the URL in the address bar.
+        $requested_url = (is_ssl() ? 'https://' : 'http://');
+        $requested_url .= $_SERVER['HTTP_HOST'];
+        if(isset($_SERVER['REQUEST_URI'])){
+            $requested_url .= $_SERVER['REQUEST_URI'];
+        }
+        return url_to_postid($requested_url);
+    }
+}
+
+if(!function_exists('__is_front')){
+	/**
+	 * @return bool
+	 */
+    function __is_front(){
+        global $wp_query;
+        if(is_admin()){
+            return false; // The current request is for an administrative interface page.
+        }
+        if(wp_doing_ajax()){
+            return false; // The current request is a WordPress Ajax request.
+        }
+        if(wp_is_serving_rest_request()){
+            return false; // WordPress is currently serving a REST API request.
+        }
+        if(wp_is_json_request()){
+            return false; // The current request is a JSON request, or is expecting a JSON response.
+        }
+        if(wp_is_jsonp_request()){
+            return false; // The current request is a JSONP request, or is expecting a JSONP response.
+        }
+        if(defined('XMLRPC_REQUEST') and XMLRPC_REQUEST){
+            return false; // The current request is a WordPress XML-RPC request.
+        }
+        if(wp_is_xml_request() or isset($wp_query) and (function_exists('is_feed') and is_feed() or function_exists('is_comment_feed') and is_comment_feed() or function_exists('is_trackback') and is_trackback())){
+            return false; // The current request is an XML request, or is expecting an XML response.
+        }
+        return true;
+    }
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// These functions’ access is marked private. This means they are not intended for use by plugin or theme developers, only in other core functions.
+//
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+if(!function_exists('__maybe_bb_avoid_full_size_images')){
+	/**
+	 * @return array
+	 */
+	function __maybe_bb_avoid_full_size_images($sizes){
+        if(!isset($sizes['full'])){
+            return $sizes;
+        }
+        if(1 === count($sizes)){
+            return $sizes;
+        }
+        unset($sizes['full']);
+        return $sizes;
 	}
 }

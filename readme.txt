@@ -5,7 +5,7 @@ Tags: magic, functions
 Tested up to: 6.7.1
 Requires at least: 5.6
 Requires PHP: 5.6
-Stable tag: 0.1.25.2
+Stable tag: 0.1.26
 License: GPL v2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -20,7 +20,7 @@ A personal collection of magic functions for WordPress plugins and themes.
 Add the following code to your main plugin file:
 
 `add_action('plugins_loaded', function(){`
-`    if(did_action('magic_functions')){`
+`    if(did_action('magic_loaded')){`
 `        'Add your custom code here...';`
 `    }`
 `});`
@@ -29,11 +29,11 @@ Add the following code to your main plugin file:
 
 Create a new file named `magic-functions.php` or add the following code to your `functions.php` file:
 
-`if(did_action('magic_functions')){`
+`if(did_action('magic_loaded')){`
 `    'Add your custom code here...';`
 `}`
 
-Note that `after_magic_functions` is the **first action hook available to themes**, instead of `after_setup_theme`.
+Note that `after_magic_loaded` is the **first action hook available to themes**, instead of `after_setup_theme`.
 
 == Changelog ==
 

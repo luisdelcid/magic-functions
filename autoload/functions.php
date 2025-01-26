@@ -2789,7 +2789,7 @@ if(!function_exists('__cf7_maybe_filter_shortcode_tag_output')){
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
-// Cache
+// Cookies
 //
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -5816,13 +5816,15 @@ if(!function_exists('__unset_plugin_cache')){
 //
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-/**
- * @return string
- */
-function __plugin_group(){
-    $file = __caller_file(2); // Two levels above.
-    $group = __plugin_prefix('', $file);
-    return $group;
+if(!function_exists('__plugin_group')){
+    /**
+     * @return string
+     */
+    function __plugin_group(){
+        $file = __caller_file(2); // Two levels above.
+        $group = __plugin_prefix('', $file);
+        return $group;
+    }
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -5831,124 +5833,154 @@ function __plugin_group(){
 //
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-/**
- * @return string
- */
-function __add_plugin_action($hook_name = '', $callback = null, $priority = 10, $accepted_args = 1){
-    $hook_name = __plugin_hook_name($hook_name);
-    return __on($hook_name, $callback, $priority, $accepted_args);
+if(!function_exists('__add_plugin_action')){
+    /**
+     * @return string
+     */
+    function __add_plugin_action($hook_name = '', $callback = null, $priority = 10, $accepted_args = 1){
+        $hook_name = __plugin_hook_name($hook_name);
+        return __on($hook_name, $callback, $priority, $accepted_args);
+    }
 }
 
-/**
- * @return string
- */
-function __add_plugin_action_once($hook_name = '', $callback = null, $priority = 10, $accepted_args = 1){
-    $hook_name = __plugin_hook_name($hook_name);
-    return __one($hook_name, $callback, $priority, $accepted_args);
+if(!function_exists('__add_plugin_action_once')){
+    /**
+     * @return string
+     */
+    function __add_plugin_action_once($hook_name = '', $callback = null, $priority = 10, $accepted_args = 1){
+        $hook_name = __plugin_hook_name($hook_name);
+        return __one($hook_name, $callback, $priority, $accepted_args);
+    }
 }
 
-/**
- * @return string
- */
-function __add_plugin_filter($hook_name = '', $callback = null, $priority = 10, $accepted_args = 1){
-    $hook_name = __plugin_hook_name($hook_name);
-    return __on($hook_name, $callback, $priority, $accepted_args);
+if(!function_exists('__add_plugin_filter')){
+    /**
+     * @return string
+     */
+    function __add_plugin_filter($hook_name = '', $callback = null, $priority = 10, $accepted_args = 1){
+        $hook_name = __plugin_hook_name($hook_name);
+        return __on($hook_name, $callback, $priority, $accepted_args);
+    }
 }
 
-/**
- * @return string
- */
-function __add_plugin_filter_once($hook_name = '', $callback = null, $priority = 10, $accepted_args = 1){
-    $hook_name = __plugin_hook_name($hook_name);
-    return __one($hook_name, $callback, $priority, $accepted_args);
+if(!function_exists('__add_plugin_filter_once')){
+    /**
+     * @return string
+     */
+    function __add_plugin_filter_once($hook_name = '', $callback = null, $priority = 10, $accepted_args = 1){
+        $hook_name = __plugin_hook_name($hook_name);
+        return __one($hook_name, $callback, $priority, $accepted_args);
+    }
 }
 
-/**
- * @return mixed
- */
-function __apply_plugin_filters($hook_name = '', $value = null, ...$arg){
-    $hook_name = __plugin_hook_name($hook_name);
-    return apply_filters($hook_name, $value, ...$arg);
+if(!function_exists('__apply_plugin_filters')){
+    /**
+     * @return mixed
+     */
+    function __apply_plugin_filters($hook_name = '', $value = null, ...$arg){
+        $hook_name = __plugin_hook_name($hook_name);
+        return apply_filters($hook_name, $value, ...$arg);
+    }
 }
 
-/**
- * @return bool
- */
-function __did_plugin_action($hook_name = ''){
-	$hook_name = __plugin_hook_name($hook_name);
-	return did_action($hook_name);
+if(!function_exists('__did_plugin_action')){
+    /**
+     * @return bool
+     */
+    function __did_plugin_action($hook_name = ''){
+        $hook_name = __plugin_hook_name($hook_name);
+        return did_action($hook_name);
+    }
 }
 
-/**
- * @return bool
- */
-function __did_plugin_filter($hook_name = ''){
-	$hook_name = __plugin_hook_name($hook_name);
-	return did_filter($hook_name);
+if(!function_exists('__did_plugin_filter')){
+    /**
+     * @return bool
+     */
+    function __did_plugin_filter($hook_name = ''){
+        $hook_name = __plugin_hook_name($hook_name);
+        return did_filter($hook_name);
+    }
 }
 
-/**
- * @return void
- */
-function __do_plugin_action($hook_name = '', ...$arg){
-	$hook_name = __plugin_hook_name($hook_name);
-	do_action($hook_name, ...$arg);
+if(!function_exists('__do_plugin_action')){
+    /**
+     * @return void
+     */
+    function __do_plugin_action($hook_name = '', ...$arg){
+        $hook_name = __plugin_hook_name($hook_name);
+        do_action($hook_name, ...$arg);
+    }
 }
 
-/**
- * @return void
- */
-function __do_plugin_action_ref_array($hook_name = '', $args = []){
-    $hook_name = __plugin_hook_name($hook_name);
-	do_action_ref_array($hook_name, $args);
+if(!function_exists('__do_plugin_action_ref_array')){
+    /**
+     * @return void
+     */
+    function __do_plugin_action_ref_array($hook_name = '', $args = []){
+        $hook_name = __plugin_hook_name($hook_name);
+        do_action_ref_array($hook_name, $args);
+    }
 }
 
-/**
- * @return bool
- */
-function __doing_plugin_action($hook_name = ''){
-    $hook_name = __plugin_hook_name($hook_name);
-    return doing_filter($hook_name);
+if(!function_exists('__doing_plugin_action')){
+    /**
+     * @return bool
+     */
+    function __doing_plugin_action($hook_name = ''){
+        $hook_name = __plugin_hook_name($hook_name);
+        return doing_filter($hook_name);
+    }
 }
 
-/**
- * @return bool
- */
-function __doing_plugin_filter($hook_name = ''){
-	$hook_name = __plugin_hook_name($hook_name);
-    return doing_filter($hook_name);
+if(!function_exists('__doing_plugin_filter')){
+    /**
+     * @return bool
+     */
+    function __doing_plugin_filter($hook_name = ''){
+        $hook_name = __plugin_hook_name($hook_name);
+        return doing_filter($hook_name);
+    }
 }
 
-/**
- * @return bool
- */
-function __has_plugin_action($hook_name = '', $callback = false){
-	$hook_name = __plugin_hook_name($hook_name);
-    return has_filter($hook_name, $callback);
+if(!function_exists('__has_plugin_action')){
+    /**
+     * @return bool
+     */
+    function __has_plugin_action($hook_name = '', $callback = false){
+        $hook_name = __plugin_hook_name($hook_name);
+        return has_filter($hook_name, $callback);
+    }
 }
 
-/**
- * @return bool
- */
-function __has_plugin_filter($hook_name = '', $callback = false){
-	$hook_name = __plugin_hook_name($hook_name);
-    return has_filter($hook_name, $callback);
+if(!function_exists('__has_plugin_filter')){
+    /**
+     * @return bool
+     */
+    function __has_plugin_filter($hook_name = '', $callback = false){
+        $hook_name = __plugin_hook_name($hook_name);
+        return has_filter($hook_name, $callback);
+    }
 }
 
-/**
- * @return bool
- */
-function __remove_plugin_action($hook_name = '', $callback = null, $priority = 10){
-    $hook_name = __plugin_hook_name($hook_name);
-    return remove_filter($hook_name, $callback, $priority);
+if(!function_exists('__remove_plugin_action')){
+    /**
+     * @return bool
+     */
+    function __remove_plugin_action($hook_name = '', $callback = null, $priority = 10){
+        $hook_name = __plugin_hook_name($hook_name);
+        return remove_filter($hook_name, $callback, $priority);
+    }
 }
 
-/**
- * @return bool
- */
-function __remove_plugin_filter($hook_name = '', $callback = null, $priority = 10){
-    $hook_name = __plugin_hook_name($hook_name);
-    return remove_filter($hook_name, $callback, $priority);
+if(!function_exists('__remove_plugin_filter')){
+    /**
+     * @return bool
+     */
+    function __remove_plugin_filter($hook_name = '', $callback = null, $priority = 10){
+        $hook_name = __plugin_hook_name($hook_name);
+        return remove_filter($hook_name, $callback, $priority);
+    }
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -5957,13 +5989,15 @@ function __remove_plugin_filter($hook_name = '', $callback = null, $priority = 1
 //
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-/**
- * @return string
- */
-function __plugin_hook_name($hook_name = ''){
-    $file = __caller_file(2); // Two levels above.
-    $hook_name = __plugin_prefix($hook_name, $file);
-    return $hook_name;
+if(!function_exists('__plugin_hook_name')){
+    /**
+     * @return string
+     */
+    function __plugin_hook_name($hook_name = ''){
+        $file = __caller_file(2); // Two levels above.
+        $hook_name = __plugin_prefix($hook_name, $file);
+        return $hook_name;
+    }
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

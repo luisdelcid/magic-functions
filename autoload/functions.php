@@ -261,6 +261,8 @@ if(!function_exists('__slug')){
 
 if(!function_exists('__toolbox')){
 	/**
+	 * This function is here for backward compatibility with old plugins and will be removed in a future version.
+	 * 
 	 * @return __Toolbox
 	 */
 	function __toolbox($atts = []){

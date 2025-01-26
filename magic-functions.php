@@ -3,7 +3,7 @@
  * Plugin Name: Magic Functions
  * Plugin URI: https://magicfunctions.com
  * Description: A personal collection of magic functions for WordPress plugins and themes.
- * Version: 0.1.25.1
+ * Version: 0.1.25.2
  * Requires at least: 5.6
  * Requires PHP: 5.6
  * Author: Luis del Cid
@@ -34,9 +34,10 @@ add_action('plugins_loaded', function(){
 
     // Include PHP classes and functions.
     $plugin = plugin_dir_path(__FILE__);
-    require_once $plugin . 'init/class-response.php';
-    require_once $plugin . 'init/class-singleton.php';
-    require_once $plugin . 'init/functions.php';
+    require_once $plugin . 'autoload/class-response.php';
+    require_once $plugin . 'autoload/class-singleton.php';
+    require_once $plugin . 'autoload/class-toolbox.php';
+    require_once $plugin . 'autoload/functions.php';
 
     // Check for updates.
     $checker = __plugin_update_checker(__FILE__);

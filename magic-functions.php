@@ -3,7 +3,7 @@
  * Plugin Name: Magic Functions
  * Plugin URI: https://magicfunctions.com
  * Description: A collection of magic functions for WordPress plugins and themes.
- * Version: 2.1.27
+ * Version: 2.1.27.1
  * Requires at least: 5.6
  * Requires PHP: 5.6
  * Author: Luis del Cid

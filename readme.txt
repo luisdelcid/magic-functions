@@ -5,15 +5,15 @@ Tags: magic, functions
 Tested up to: 6.7.1
 Requires at least: 5.6
 Requires PHP: 5.6
-Stable tag: 2.1.26
+Stable tag: 2.1.27
 License: GPL v2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-A personal collection of magic functions for WordPress plugins and themes.
+A personal of magic functions for WordPress plugins and themes.
 
 == Description ==
 
-A personal collection of magic functions for WordPress plugins and themes.
+A personal of magic functions for WordPress plugins and themes.
 
 = For plugin developers: =
 

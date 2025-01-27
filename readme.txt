@@ -9,11 +9,11 @@ Stable tag: 2.1.27
 License: GPL v2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-A personal of magic functions for WordPress plugins and themes.
+A collection of magic functions for WordPress plugins and themes.
 
 == Description ==
 
-A personal of magic functions for WordPress plugins and themes.
+A collection of magic functions for WordPress plugins and themes.
 
 = For plugin developers: =
 

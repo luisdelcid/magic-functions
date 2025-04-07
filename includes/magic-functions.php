@@ -103,13 +103,17 @@ if(!function_exists('__enqueue_magic_functions')){ // Hardcoded.
 	/**
 	 * @return void
 	 */
-	function __enqueue_magic_functions($file = ''){ // Hardcoded.
+	function __enqueue_magic_functions(){ // Hardcoded.
+		$handle = 'magic-functions'; // Hardcoded.
+		if(wp_script_is($handle)){
+			return; // Already enqueued.
+		}
+		$file = $includes = plugin_dir_path(__FILE__) . $handle . '.js';
 		if(!file_exists($file)){
             return;
         }
 		__omni_enqueue('stackframe', 'https://cdn.jsdelivr.net/npm/stackframe@1.3.4/stackframe.min.js', [], '1.3.4');
         __omni_enqueue('error-stack-parser', 'https://cdn.jsdelivr.net/npm/error-stack-parser@2.1.4/error-stack-parser.min.js', ['stackframe'], '2.1.4');
-        $handle = 'magic-functions'; // Hardcoded.
         $deps = ['error-stack-parser', 'jquery', 'underscore', 'utils', 'wp-api', 'wp-hooks'];
         $l10n = [
             'mu_plugins_url' => __dir_to_url(wp_normalize_path(WPMU_PLUGIN_DIR)),
@@ -221,7 +225,7 @@ if(!function_exists('__toolbox')){
 
 if(!function_exists('__context_enqueue')){
     /**
-     * This function MUST be called inside the '$context' action hook.
+     * This function MUST be called inside the '{$context}_enqueue_scripts' action hook.
      *
      * @return string|WP_Error
      */
@@ -252,6 +256,27 @@ if(!function_exists('__context_enqueue')){
         __add_action_once($context . '_enqueue_scripts', '__maybe_enqueue_' . $context . '_assets'); // Hardcoded.
         return $handle;
     }
+}
+
+if(!function_exists('__maybe_include_theme_functions')){
+	/**
+	 * This function MUST be called inside the 'after_setup_theme' action hook.
+	 *
+	 * @return void
+	 */
+	function __maybe_include_theme_functions(){
+		if(!doing_action('after_setup_theme')){ // Too early or too late.
+	        return;
+	    }
+		$filename = 'magic-functions.php'; // Hardcoded.
+		// Load the functions for the active theme, for both parent and child theme if applicable.
+        foreach(wp_get_active_and_valid_themes() as $theme){
+        	if(file_exists($theme . '/' . $filename)){
+        		require_once $theme . '/' . $filename;
+        	}
+        }
+		do_action('after_magic_functions_loaded'); // Hardcoded.
+	}
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -7443,6 +7468,23 @@ if(!function_exists('__use_tgm_plugin_activation')){
 // Themes
 //
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+if(!function_exists('__include_theme_functions')){
+	/**
+	 * This function MUST be called inside the 'after_setup_theme' action hook.
+     *
+	 * @return void
+	 */
+	function __include_theme_functions(){
+		if(doing_action('after_setup_theme')){ // Just in time.
+            __maybe_include_theme_functions();
+        }
+		if(did_action('after_setup_theme')){ // Too late.
+            return;
+        }
+		__add_action_once('after_setup_theme', '__maybe_include_theme_functions');
+	}
+}
 
 if(!function_exists('__theme_is')){
     /**

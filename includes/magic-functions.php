@@ -325,6 +325,7 @@ if(!function_exists('__admin_notice_html')){
                 'dismissible' => $is_dismissible,
             ];
             $html = wp_get_admin_notice($message, $args);
+			return $html;
         }
         // Backward compatibility.
         if(!$type){

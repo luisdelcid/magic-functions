@@ -105,9 +105,6 @@ if(!function_exists('__enqueue_magic_functions')){ // Hardcoded.
 	 */
 	function __enqueue_magic_functions(){ // Hardcoded.
 		$handle = 'magic-functions'; // Hardcoded.
-		if(wp_script_is($handle)){
-			return; // Already enqueued.
-		}
 		$file = $includes = plugin_dir_path(__FILE__) . $handle . '.js';
 		if(!file_exists($file)){
             return;

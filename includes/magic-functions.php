@@ -6,72 +6,8 @@
 //
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-if(!function_exists('__add_hiding_rule')){
-    /**
-     * @return void
-     */
-    function __add_hiding_rule($args = []){
-        if(is_multisite()){
-    		return; // The rewrite rules are not for WordPress MU networks.
-    	}
-    	$pairs = [
-            'capability' => '',
-            'exclude_other_media' => [],
-            'exclude_public_media' => false,
-            'file' => '',
-    		'subdir' => '',
-    	];
-        $args = shortcode_atts($pairs, $args);
-    	$md5 = __md5($args);
-        if(__isset_array_cache('hide_uploads_subdir', $md5)){
-            return; // Prevent adding rule when already added.
-        }
-        __set_array_cache('hide_uploads_subdir', $md5, $args);
-    	$uploads_use_yearmonth_folders = false;
-    	$subdir = ltrim(untrailingslashit($args['subdir']), '/');
-    	if($subdir){
-    		$subdir = '/(' . $subdir . ')';
-    	} else {
-    		if(get_option('uploads_use_yearmonth_folders')){
-    			$subdir = '/(\d{4})/(\d{2})';
-    			$uploads_use_yearmonth_folders = true;
-    		} else {
-    			$subdir = '';
-    		}
-    	}
-    	$upload_dir = wp_get_upload_dir();
-    	if($upload_dir['error']){
-    		return;
-    	}
-        $atts = [];
-        $path = plugin_dir_path(dirname(__FILE__)) . 'shortinit/files.php'; // Hardcoded.
-    	$tmp = str_replace(wp_normalize_path(ABSPATH), '', wp_normalize_path($path));
-    	$parts = explode('/', $tmp);
-    	$levels = count($parts);
-    	$query = __dir_to_url($path);
-    	$regex = $upload_dir['baseurl'] . $subdir. '/(.+)';
-    	if($uploads_use_yearmonth_folders){
-    		$atts['yyyy'] = '$1';
-    		$atts['mm'] = '$2';
-    		$atts['file'] = '$3';
-    	} else {
-    		$atts['subdir'] = '$1';
-    		$atts['file'] = '$2';
-    	}
-    	$atts['levels'] = $levels;
-        $atts['md5'] = $md5;
-        $value = [
-            'capability' => $args['capability'],
-            'exclude_other_media' => $args['exclude_other_media'],
-            'exclude_public_media' => $args['exclude_public_media'],
-        ];
-        //$option = __str_prefix('hide_uploads_subdir_exclude_' . $md5);
-        $option = __str_prefix('hide_uploads_subdir_' . $md5);
-        //update_option($option, (array) $args['exclude'], 'no');
-        update_option($option, $value, 'no');
-    	$query = add_query_arg($atts, $query);
-    	__add_external_rule($regex, $query, $args['file']);
-    }
+if(!defined('MAGIC_FUNCTIONS')){ // Hardcoded.
+	define('MAGIC_FUNCTIONS', '5.5.5'); // Hardcoded.
 }
 
 if(!function_exists('__dir')){
@@ -163,20 +99,18 @@ if(!function_exists('__enqueue_asset')){
     }
 }
 
-if(!function_exists('__enqueue_functions')){
+if(!function_exists('__enqueue_magic_functions')){ // Hardcoded.
 	/**
 	 * @return void
 	 */
-	function __enqueue_functions(){
+	function __enqueue_magic_functions($file = ''){ // Hardcoded.
+		if(!file_exists($file)){
+            return;
+        }
 		__omni_enqueue('stackframe', 'https://cdn.jsdelivr.net/npm/stackframe@1.3.4/stackframe.min.js', [], '1.3.4');
         __omni_enqueue('error-stack-parser', 'https://cdn.jsdelivr.net/npm/error-stack-parser@2.1.4/error-stack-parser.min.js', ['stackframe'], '2.1.4');
-		$handle = 'magic-singleton'; // Hardcoded.
-        $file = plugin_dir_path(__FILE__) . 'class-singleton.js'; // Hardcoded.
-        __local_omni_enqueue($handle, $file);
         $handle = 'magic-functions'; // Hardcoded.
-        $file = plugin_dir_path(__FILE__) . 'functions.js'; // Hardcoded.
         $deps = ['error-stack-parser', 'jquery', 'underscore', 'utils', 'wp-api', 'wp-hooks'];
-        $deps[] = 'magic-singleton'; // Hardcoded.
         $l10n = [
             'mu_plugins_url' => __dir_to_url(wp_normalize_path(WPMU_PLUGIN_DIR)),
             'plugins_url' => __dir_to_url(wp_normalize_path(WP_PLUGIN_DIR)),
@@ -238,13 +172,16 @@ if(!function_exists('__prefix')){
 
 if(!function_exists('__remote_request')){
 	/**
-	 * @return object
+	 * @return object|WP_Error
 	 */
 	function __remote_request($method = '', $url = '', $args = []){
         $args = wp_parse_args($args);
 		$args['method'] = $method;
 		$args = __sanitize_remote_args($args, $url);
 		$response = wp_remote_request($url, $args);
+        if(is_wp_error($response)){
+            return $response;
+        }
         $response = new \__Response($response); // Hardcoded.
         return $response;
 	}
@@ -262,7 +199,7 @@ if(!function_exists('__slug')){
 if(!function_exists('__toolbox')){
 	/**
 	 * This function is here for backward compatibility with old plugins and will be removed in a future version.
-	 * 
+	 *
 	 * @return __Toolbox
 	 */
 	function __toolbox($atts = []){
@@ -327,18 +264,18 @@ if(!function_exists('__add_admin_notice')){
 	/**
 	 * @return void
 	 */
-	function __add_admin_notice($message = '', $class = 'warning', $is_dismissible = false){
+	function __add_admin_notice($message = '', $type = '', $is_dismissible = false){
 		if(doing_action('admin_notices')){ // Just in time.
-	        __echo_admin_notice($message, $class, $is_dismissible);
+	        __echo_admin_notice($message, $type, $is_dismissible);
 			return;
 	    }
 		if(did_action('admin_notices')){ // Too late.
 			return;
 		}
 		$admin_notice = [
-			'class' => $class,
 			'is_dismissible' => $is_dismissible,
 			'message' => $message,
+            'type' => $type,
 		];
 		$md5 = __md5($admin_notice);
 		if(__isset_array_cache('admin_notices', $md5)){
@@ -353,22 +290,25 @@ if(!function_exists('__admin_notice_html')){
 	/**
 	 * @return string
 	 */
-	function __admin_notice_html($message = '', $class = 'warning', $is_dismissible = false){
-		if(!in_array($class, ['error', 'info', 'success', 'warning'])){
-			$class = 'warning';
+	function __admin_notice_html($message = '', $type = '', $is_dismissible = false){
+		if(!in_array($type, ['error', 'info', 'success', 'warning'])){
+			$type = '';
 		}
         if(function_exists('wp_get_admin_notice')){
             $args = [
-                'type' => $class,
+                'type' => $type,
                 'dismissible' => $is_dismissible,
             ];
             $html = wp_get_admin_notice($message, $args);
         }
         // Backward compatibility.
+        if(!$type){
+            $type = 'warning';
+        }
         if($is_dismissible){
-			$class .= ' is-dismissible';
+			$type .= ' is-dismissible';
 		}
-		return '<div class="notice notice-' . $class . '"><p>' . $message . '</p></div>';
+		return '<div class="notice notice-' . $type . '"><p>' . $message . '</p></div>';
 	}
 }
 
@@ -384,11 +324,11 @@ if(!function_exists('__echo_admin_notice')){
 	 *
 	 * @return void
 	 */
-	function __echo_admin_notice($message = '', $class = 'warning', $is_dismissible = false){
+	function __echo_admin_notice($message = '', $type = '', $is_dismissible = false){
 		if(!doing_action('admin_notices')){ // Too early or too late.
 	        return;
 	    }
-		$html = __admin_notice_html($message, $class, $is_dismissible);
+		$html = __admin_notice_html($message, $type, $is_dismissible);
 		echo $html;
 	}
 }
@@ -408,7 +348,7 @@ if(!function_exists('__maybe_add_admin_notices')){
 			return;
 		}
 		foreach($admin_notices as $md5 => $admin_notice){
-			__echo_admin_notice($admin_notice['message'], $admin_notice['class'], $admin_notice['is_dismissible']);
+			__echo_admin_notice($admin_notice['message'], $admin_notice['type'], $admin_notice['is_dismissible']);
 		}
 	}
 }
@@ -444,14 +384,25 @@ if(!function_exists('__is_associative_array')){
 		if(!is_array($array)){
 			return false;
 		}
-		if(empty($array)){
+		if(!$array){
 			return false;
 		}
-		$end = count($array) - 1;
-		if(array_keys($array) === range(0, $end)){
+        return !__is_numeric_array($array);
+	}
+}
+
+if(!function_exists('__is_numeric_array')){
+	/**
+	 * @return bool
+	 */
+	function __is_numeric_array($array = []){
+		if(!is_array($array)){
 			return false;
 		}
-		return $array;
+		if(!$array){
+			return false;
+		}
+		return array_keys($array) === range(0, count($array) - 1);
 	}
 }
 
@@ -596,64 +547,7 @@ if(!function_exists('__maybe_authenticate_without_password')){
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
-// Beaver Builder
-//
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-if(!function_exists('__bb_is_b4')){
-    /**
-     * @return bool
-     */
-    function __bb_is_b4(){
-        if(__isset_cache('bb_is_b4')){
-            return (bool) __get_cache('bb_is_b4', false);
-        }
-        if(!__is_bb()){
-            return false;
-        }
-        $framework = get_theme_mod('fl-framework', 'base');
-    	$bb_is_b4 = ('bootstrap-4' === $framework);
-        __set_cache('bb_is_b4', $bb_is_b4);
-    	return $bb_is_b4;
-    }
-}
-
-if(!function_exists('__bb_is_fa5')){
-    /**
-     * @return bool
-     */
-    function __bb_is_fa5(){
-        if(__isset_cache('bb_is_fa5')){
-            return (bool) __get_cache('bb_is_fa5', false);
-        }
-        if(!__is_bb()){
-            return false;
-        }
-        $awesome = get_theme_mod('fl-awesome', 'none');
-    	$bb_is_fa5 = ('fa5' === $awesome);
-        __set_cache('bb_is_fa5', $bb_is_fa5);
-    	return $bb_is_fa5;
-    }
-}
-
-if(!function_exists('__is_bb')){
-    /**
-     * @return bool
-     */
-    function __is_bb(){
-        if(__isset_cache('bb_is')){
-            return (bool) __get_cache('bb_is', false);
-        }
-    	$current_theme = wp_get_theme();
-    	$bb_is = ('Beaver Builder Theme' === $current_theme->get('Name') or 'bb-theme' === $current_theme->get('Template'));
-    	__set_cache('bb_is', $bb_is);
-    	return $bb_is;
-    }
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//
-// Bootstrap
+// Bootstrap 4
 //
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -747,14 +641,116 @@ if(!function_exists('__alert_warning')){
 	}
 }
 
+if(!function_exists('__has_btn_class')){
+	/**
+	 * @return bool
+	 */
+	function __has_btn_class($class = ''){
+	    $class = __remove_whitespaces($class);
+	    preg_match_all('/btn-[A-Za-z][-A-Za-z0-9_:.]*/', $class, $matches);
+		$matches = array_filter($matches[0], function($match){
+			return !in_array($match, ['btn-block', 'btn-lg', 'btn-sm']);
+		});
+		return (bool) $matches;
+	}
+}
+
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
 // Cache
 //
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-if(!function_exists('__get_array_cache')){
+if(!function_exists('__array_cache_delete')){
 	/**
+     * Alias for __unset_array_cache().
+     *
+	 * @return bool
+	 */
+	function __array_cache_delete($array_key = '', $key = ''){
+		return __unset_array_cache($array_key, $key);
+	}
+}
+
+if(!function_exists('__array_cache_exists')){
+	/**
+     * Alias for __isset_array_cache().
+     *
+	 * @return bool
+	 */
+	function __array_cache_exists($array_key = '', $key = ''){
+		return __isset_array_cache($array_key, $key);
+	}
+}
+
+if(!function_exists('__array_cache_get')){
+    /**
+     * Alias for __get_array_cache().
+     *
+	 * @return mixed
+	 */
+	function __array_cache_get($array_key = '', $key = '', $default = null){
+		return __get_array_cache($array_key, $key, $default);
+	}
+}
+
+if(!function_exists('__array_cache_set')){
+    /**
+     * Alias for __set_array_cache().
+     *
+	 * @return bool
+	 */
+	function __array_cache_set($array_key = '', $key = '', $data = null){
+		return __set_array_cache($array_key, $key, $data);
+	}
+}
+
+if(!function_exists('__cache_delete')){
+    /**
+     * Alias for __unset_cache().
+     *
+	 * @return bool
+	 */
+	function __cache_delete($key = ''){
+		return __unset_cache($key);
+	}
+}
+
+if(!function_exists('__cache_exists')){
+    /**
+     * Alias for __isset_cache().
+     *
+	 * @return bool
+	 */
+	function __cache_exists($key = ''){
+		return __isset_cache($key);
+	}
+}
+
+if(!function_exists('__cache_get')){
+    /**
+     * Alias for __get_cache().
+     *
+	 * @return mixed
+	 */
+	function __cache_get($key = '', $default = null){
+		return __get_cache($key, $default);
+	}
+}
+
+if(!function_exists('__cache_set')){
+    /**
+     * Alias for __set_cache().
+     *
+	 * @return bool
+	 */
+	function __cache_set($key = '', $data = null){
+		return __set_cache($key, $data);
+	}
+}
+
+if(!function_exists('__get_array_cache')){
+    /**
 	 * @return mixed
 	 */
 	function __get_array_cache($array_key = '', $key = '', $default = null){
@@ -844,184 +840,159 @@ if(!function_exists('__unset_cache')){
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
-// Cloudinary
+// Closures
 //
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-if(!function_exists('__add_cloudinary_image_size')){
-    /**
-     * @return void
-     */
-    function __add_cloudinary_image_size($name = '', $options = []){
-        $default_sizes = ['thumbnail', 'medium', 'medium_large', 'large'];
-        $size = sanitize_title($name);
-    	if(in_array($size, $default_sizes)){
-    		return; // Do not overwrite default sizes.
+if(!function_exists('__serialize_closure')){
+	/**
+	 * @return string|WP_Error
+	 */
+	function __serialize_closure($closure = null){
+		$lib = __use_serializable_closure();
+		if(is_wp_error($lib)){
+			return $lib;
+		}
+		return \Opis\Closure\serialize($closure);
+	}
+}
+
+if(!function_exists('__unserialize_closure')){
+	/**
+	 * @return mixed|WP_Error
+	 */
+	function __unserialize_closure($closure = null){
+		$lib = __use_serializable_closure();
+		if(is_wp_error($lib)){
+			return $lib;
+		}
+		return \Opis\Closure\unserialize($closure);
+	}
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// These functions’ access is marked private. This means they are not intended for use by plugin or theme developers, only in other core functions.
+//
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+if(!function_exists('__use_serializable_closure')){
+	/**
+	 * @return string|WP_Error
+	 */
+	function __use_serializable_closure($ver = '4.3.1'){
+		$key = 'serializable-closure-' . $ver;
+		if(__isset_cache($key)){
+			return (string) __get_cache($key, '');
+		}
+		$class = 'Opis\Closure\Serializer';
+		if(class_exists($class)){
+			return ''; // Already handled outside of this function.
+		}
+		$dir = __remote_lib('https://github.com/opis/closure/archive/refs/tags/' . $ver . '.zip', 'closure-' . $ver);
+		if(is_wp_error($dir)){
+			return $dir;
+		}
+		$file = $dir . '/autoload.php';
+		if(!file_exists($file)){
+			return __error(translate('File doesn&#8217;t exist?'), $file);
+		}
+		require_once($file);
+		if(!class_exists($class)){
+			return __error(sprintf(translate('Missing parameter(s): %s'), $class) . '.');
+		}
+		__set_cache($key, $dir);
+		return $dir;
+	}
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// Code
+//
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+if(!function_exists('__compile_less')){
+	/**
+	 * @return string|WP_Error
+	 */
+	function __compile_less($css = ''){
+        $lib = __use_lessphp();
+    	if(is_wp_error($lib)){
+    		return $lib;
     	}
-        /*$additional_sizes = wp_get_additional_image_sizes();
-        if(in_array($size, $additional_sizes)){
-    		remove_image_size($size); // Do not overwrite additional sizes.
-    	}*/
-        __add_filter_once('fl_builder_photo_sizes_select', '__maybe_cloudinary_fl_builder_photo_sizes_select');
-        __add_filter_once('image_downsize', '__maybe_cloudinary_image_downsize', 10, 3);
-        __add_filter_once('image_size_names_choose', '__maybe_cloudinary_image_size_names_choose');
-        __set_array_cache('cloudinary_image_sizes', $size, [
-    		'name' => $name,
-    		'options' => $options,
-    	]);
-        add_image_size($size); // Fake size.
-    }
-}
-
-if(!function_exists('__cloudinary_config')){
-    /**
-     * @return array|WP_Error
-     */
-    function __cloudinary_config($config = []){
-        $cache_key = 'cloudinary_config';
-        if(__isset_cache($cache_key)){
-            return (array) __get_cache($cache_key, []);
-        }
-        if(!$config){
-            $error_msg = translate('Missing parameter(s): %s');
-            $error_msg = sprintf($error_msg, 'Access Keys') . '.';
-            return __error($error_msg);
-        }
-        $lib = __use_cloudinary_php();
-        if(is_wp_error($lib)){
-            return $lib;
-        }
-        $config_keys = ['api_key', 'api_secret', 'cloud_name'];
-        if(__array_keys_exists($config_keys, $config)){
-            $config = \Cloudinary::config($config);
-            __set_cache($cache_key, $config);
-            return $config;
-        }
-        if(is_string($config) and preg_match('/^(?:CLOUDINARY_URL=)?(?:cloudinary:\/\/)(\d+):([^:@]+)@([^@]+)$/', $config, $matches)){
-            $config = \Cloudinary::config([
-                'api_key' => $matches[1],
-                'api_secret' => $matches[2],
-                'cloud_name' => $matches[3],
-            ]);
-            __set_cache($cache_key, $config);
-            return $config;
-        }
-        $error_msg = translate('Invalid parameter(s): %s');
-        $error_msg = sprintf($error_msg, 'Access Keys') . '.';
-        return __error($error_msg);
-    }
-}
-
-if(!function_exists('__cloudinary_file')){
-    /**
-     * @return string|WP_Error
-     */
-    function __cloudinary_file($attachment_id = 0, $options = []){
-        $meta_key = __cloudinary_meta_key_with_options('file', $options);
-        if(is_wp_error($meta_key)){
-            return $meta_key;
-        }
-        $meta_value = __cloudinary_meta_value($attachment_id, $meta_key);
-        if($meta_value){
-            if(is_wp_error($meta_value)){
-                return $meta_value;
-            }
-            if(file_exists($meta_value)){
-                return $meta_value; // Already downloaded.
-            }
-            delete_post_meta($attachment_id, $meta_key, $meta_value);
-        }
-        $url = __cloudinary_url($attachment_id, $options);
-        if(is_wp_error($url)){
-            return $url;
-        }
-        $download_dir = __download_dir('cloudinary');
-        if(is_wp_error($download_dir)){
-            return $download_dir;
-        }
-        $attachment_file = wp_get_original_image_path($attachment_id);
-        $attachment_filename = wp_basename($attachment_file);
-        $filename = wp_unique_filename($download_dir, $attachment_filename);
-        $args = [
-            'filename' => trailingslashit($download_dir) . $filename,
-        ];
-        $file = __download_url($url, $args);
-        if(is_wp_error($file)){
-            return $file;
-        }
-        update_post_meta($attachment_id, $meta_key, $file);
-        return $file;
-    }
-}
-
-if(!function_exists('__cloudinary_file_info')){
-    /**
-     * @return array|WP_Error
-     */
-    function __cloudinary_file_info($attachment_id = 0, $options = []){
-        $file = __cloudinary_file($attachment_id, $options);
-        if(is_wp_error($file)){
-            return $file;
-        }
-        list($width, $height) = wp_getimagesize($file);
-        return [
-            'file' => $file,
-            'filename' => wp_basename($file),
-            'height' => $height,
-            'url' => __dir_to_url($file),
-            'width' => $width,
-        ];
-    }
-}
-
-if(!function_exists('__cloudinary_public_id')){
-    /**
-     * @return string|WP_Error
-     */
-    function __cloudinary_public_id($attachment_id = 0){
-        $response = __cloudinary_maybe_upload($attachment_id);
-        if(is_wp_error($response)){
-            return $response;
-        }
-        return (isset($response['public_id']) ? $response['public_id'] : '');
-    }
-}
-
-if(!function_exists('__cloudinary_url')){
-    /**
-     * @return string|WP_Error
-     */
-    function __cloudinary_url($attachment_id = 0, $options = []){
-        $meta_key = __cloudinary_meta_key_with_options('url', $options);
-        if(is_wp_error($meta_key)){
-            return $meta_key;
-        }
-        $meta_value = __cloudinary_meta_value($attachment_id, $meta_key);
-        if($meta_value){
-            if(is_wp_error($meta_value)){
-                return $meta_value;
-            }
-            return $meta_value; // Already transformed.
-        }
-        $public_id = __cloudinary_public_id($attachment_id);
-        if(is_wp_error($public_id)){
-            return $public_id;
-        }
+    	\Less_Autoloader::register();
+        $parser = new \Less_Parser([
+            'compress' => true,
+        ]);
         try {
-            $response = cloudinary_url($public_id, $options);
+            $parser->parse($css);
+            $result = $parser->getCss();
         } catch(\Throwable $t){
-            $response = __error($t->getMessage());
+            $error_msg = str_replace(' in file anonymous-file-0.less in anonymous-file-0.less', '.', $t->getMessage());
+            $result = __error($error_msg);
         } catch(\Exception $e){
-            $response = __error($e->getMessage());
+            $error_msg = str_replace(' in file anonymous-file-0.less in anonymous-file-0.less', '.', $e->getMessage());
+            $result = __error($error_msg);
         }
-        if(is_wp_error($response)){
-            return $response;
+        return $result;
+    }
+}
+
+if(!function_exists('__compress_css')){
+	/**
+	 * @return string
+	 */
+	function __compress_css($css = ''){
+        $css = preg_replace('!/\*[^*]*\*+([^/][^*]*\*+)*/!', '', $css);
+		$css = __remove_whitespaces($css);
+		return $css;
+    }
+}
+
+if(!function_exists('__minify_css')){
+	/**
+	 * @return string
+	 */
+	function __minify_css($css = ''){
+        $css = __normalize_ie_filters($css);
+        $less = __compile_less($css);
+        if(!is_wp_error($less)){
+            $css = $less;
         }
-        if(__is_cloudinary_error($response)){
-            return __error($response->getMessage());
-        }
-        update_post_meta($attachment_id, $meta_key, $response);
-        return $response;
+        if(__in_debug()){
+			return $css;
+		}
+        $css = __compress_css($css);
+        return $css;
+    }
+}
+
+if(!function_exists('__minify_js')){
+	/**
+	 * @return string|WP_Error
+	 */
+	function __minify_js($js = ''){
+        if(__in_debug()){
+			return $js;
+		}
+        $lib = __use_jshrink();
+    	if(is_wp_error($lib)){
+    		return $js; // Silence is golden.
+    	}
+    	$result = \JShrink\Minifier::minify($js, [
+            'flaggedComments' => false,
+        ]);
+        return $result;
+    }
+}
+
+if(!function_exists('__normalize_ie_filters')){
+	/**
+	 * @return string
+	 */
+	function __normalize_ie_filters($css = ''){
+		return preg_replace_callback('(filter\s?:\s?(.*);)', '__preg_replace_less', $css); // Fix issue with IE filters.
     }
 }
 
@@ -1031,319 +1002,76 @@ if(!function_exists('__cloudinary_url')){
 //
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-if(!function_exists('__cloudinary_file_candidate')){
-    /**
-     * @return string|WP_Error
-     */
-    function __cloudinary_file_candidate($attachment_id = 0, $max_file_size = 0){
-        if(!wp_attachment_is_image($attachment_id)){
-            $error_msg = translate('This file is not an image. Please try another.');
-            $error_msg = __first_p($error_msg);
-            return __error($error_msg);
-        }
-        $image_file = get_attached_file($attachment_id);
-        if(!file_exists($image_file)){
-            $error_msg = translate('The attached file cannot be found.');
-            return __error($error_msg);
-        }
-        $type = wp_check_filetype($image_file);
-        if(!$type['ext'] or !$type['type']){
-            $error_msg = translate('The uploaded file is not a valid image. Please try again.');
-            $error_msg = __first_p($error_msg);
-            return __error($error_msg);
-        }
-        $image_meta = wp_get_attachment_metadata($attachment_id);
-        $max_file_size_in_kb = ($max_file_size / KB_IN_BYTES);
-        if(!$image_meta){
-            $filesize = wp_filesize($image_file);
-            if($filesize <= $max_file_size){
-                return $image_file;
-            }
-            $error_msg = translate('This file is too big. Files must be less than %s KB in size.');
-            $error_msg = sprintf($error_msg, $max_file_size_in_kb);
-            return __error($error_msg);
-        }
-        if(isset($image_meta['original_image'])){
-            $original_image = path_join(dirname($image_file), $image_meta['original_image']); // Alias for wp_get_original_image_path.
-            if(!file_exists($original_image)){
-                $error_msg = translate('The attached file cannot be found.');
-                return __error($error_msg);
-            }
-            $filesize = wp_filesize($original_image);
-            if($filesize <= $max_file_size){
-                return $original_image;
-            }
-        }
-        if($image_meta['filesize'] <= $max_file_size){
-            return $image_file;
-        }
-        $sizes = wp_list_pluck($image_meta['sizes'], 'filesize', 'file');
-        arsort($sizes);
-        $basedir = dirname($file);
-        $path = '';
-        foreach($sizes as $file => $filesize){
-            if($filesize > $max_file_size){
-                continue;
-            }
-            $path = path_join($basedir, $file);
-            if(!file_exists($path)){
-                continue;
-            }
-            break;
-        }
-        if(!$path){
-            $error_msg = translate('This file is too big. Files must be less than %s KB in size.');
-            $error_msg = sprintf($error_msg, $max_file_size_in_kb);
-            return __error($error_msg);
-        }
-        return $path;
-    }
-}
-
-if(!function_exists('__cloudinary_maybe_upload')){
-    /**
-     * @return array|WP_Error
-     */
-    function __cloudinary_maybe_upload($attachment_id = 0){
-        $meta_key = __cloudinary_meta_key('response');
-        if(is_wp_error($meta_key)){
-            return $meta_key;
-        }
-        $meta_value = __cloudinary_meta_value($attachment_id, $meta_key);
-        if($meta_value){
-            if(is_wp_error($meta_value)){
-                return $meta_value;
-            }
-            return (array) $meta_value; // Already uploaded.
-        }
-        $max_file_size = (10 * MB_IN_BYTES); // TODO: Check for paid plans. https://support.cloudinary.com/hc/en-us/articles/202520592-Do-you-have-a-file-size-limit-
-        $file = __cloudinary_file_candidate($attachment_id, $max_file_size);
-        if(is_wp_error($file)){
-            return $file;
-        }
-        try {
-            $response = \Cloudinary\Uploader::upload($file);
-        } catch(\Throwable $t){
-            $response = __error($t->getMessage());
-        } catch(\Exception $e){
-            $response = __error($e->getMessage());
-        }
-        if(is_wp_error($response)){
-            return $response;
-        }
-        if(__is_cloudinary_error($response)){
-            return __error($response->getMessage());
-        }
-        update_post_meta($attachment_id, $meta_key, $response);
-        return $response;
-    }
-}
-
-if(!function_exists('__cloudinary_meta_key')){
-    /**
-     * @return string|WP_Error
-     */
-    function __cloudinary_meta_key($context = ''){
-        if(!$context){
-            $error_msg = translate('The "%s" argument must be a non-empty string.');
-            $error_msg = sprintf($error_msg, 'context');
-            return __error($error_msg);
-        }
-        $config = __cloudinary_config();
-        if(is_wp_error($config)){
-            return $config;
-        }
-        $config_hash = __md5($config);
-        $meta_key = '_cloudinary_' . $config_hash . '_' . $context;
-        return $meta_key;
-    }
-}
-
-if(!function_exists('__cloudinary_meta_key_with_options')){
-    /**
-     * @return string|WP_Error
-     */
-    function __cloudinary_meta_key_with_options($context = '', $options = []){
-        $meta_key = __cloudinary_meta_key($context);
-        if(is_wp_error($meta_key)){
-            return $meta_key;
-        }
-        if(!$options){
-            $error_msg = translate('The %s argument must be an array.');
-            $error_msg = sprintf($error_msg, 'options');
-            return __error($error_msg);
-        }
-        $options_hash = __md5($options);
-        $meta_key .= '_' . $options_hash;
-        return $meta_key;
-    }
-}
-
-if(!function_exists('__cloudinary_meta_value')){
-    /**
-     * @return array|string|WP_Error
-     */
-    function __cloudinary_meta_value($attachment_id = 0, $meta_key = ''){
-        if(!$meta_key){
-            $error_msg = sprintf(translate('The "%s" argument must be a non-empty string.'), 'meta_key');
-            return __error($error_msg);
-        }
-        if(!wp_attachment_is_image($attachment_id)){
-            $error_msg = translate('This file is not an image. Please try another.');
-            $error_msg = __first_p($error_msg);
-            return __error($error_msg);
-        }
-        return get_post_meta($attachment_id, $meta_key, true);
-    }
-}
-
-if(!function_exists('__cloudinary_width_height_ascending_sort')){
-    /**
-     * @return int
-     */
-    function __cloudinary_width_height_ascending_sort($a = 0, $b = 0){
-        if($a['width'] === $b['width']){
-			if($a['height'] === $b['height']){
-				return 0;
-			}
-			if($a['height'] < $b['height']){
-				return -1;
-			}
-			return 1;
-		}
-		if($a['width'] < $b['width']){
-			return -1;
-		}
-		return 1;
-    }
-}
-
-if(!function_exists('__is_cloudinary_error')){
-    /**
-     * @return bool
-     */
-    function __is_cloudinary_error($thing = null){
-        $is_cloudinary_error = ($thing instanceof \Cloudinary\Error);
-        return $is_cloudinary_error;
-    }
-}
-
-if(!function_exists('__maybe_cloudinary_fl_builder_photo_sizes_select')){
+if(!function_exists('__preg_replace_less')){
 	/**
-	 * @return array
+	 * @return string
 	 */
-	function __maybe_cloudinary_fl_builder_photo_sizes_select($sizes){
-        $cache_key = 'cloudinary_image_sizes';
-        if(!__isset_cache($cache_key)){
-    		return $sizes;
-    	}
-		if(!isset($sizes['full'])){
-			return $sizes;
+	function __preg_replace_less($matches = []){
+        if(!empty($matches[1])){
+			return 'filter: ~"' . $matches[1] . '";';
 		}
-		$id = __attachment_url_to_postid($sizes['full']['url']);
-		if(!$id){
-			return $sizes;
+		return $matches[0];
+    }
+}
+
+if(!function_exists('__use_jshrink')){
+	/**
+	 * @return string|WP_Error
+	 */
+	function __use_jshrink($ver = '1.7.0'){
+		$key = 'jshrink-' . $ver;
+	    if(__isset_cache($key)){
+	        return (string) __get_cache($key, '');
+	    }
+		$class = 'JShrink\Minifier';
+		if(class_exists($class)){
+	        return ''; // Already handled outside of this function.
+	    }
+		$dir = __remote_lib('https://github.com/tedious/JShrink/archive/refs/tags/v' . $ver . '.zip', 'less.php-' . $ver);
+		if(is_wp_error($dir)){
+			return $dir;
 		}
-        $cloudinary_image_sizes = (array) __get_cache($cache_key, []);
-		foreach($cloudinary_image_sizes as $size => $args){
-			if(isset($sizes[$size])){
-				continue;
-			}
-            $file_info = __cloudinary_file_info($id, $args['options']);
-            if(is_wp_error($file_info)){
-                continue;
-            }
-			$sizes[$size] = [
-				'filename' => $file_info['filename'],
-				'height' => $file_info['height'],
-				'url' => $file_info['url'],
-				'width' => $file_info['width'],
-			];
+		$file = $dir . '/src/JShrink/Minifier.php';
+		if(!file_exists($file)){
+			return __error(translate('File doesn&#8217;t exist?'), $file);
 		}
-		uasort($sizes, '__cloudinary_width_height_ascending_sort');
-		return $sizes;
+		require_once($file);
+		if(!class_exists($class)){
+			return __error(sprintf(translate('Missing parameter(s): %s'), $class) . '.');
+		}
+		__set_cache($key, $dir);
+		return $dir;
 	}
 }
 
-if(!function_exists('__maybe_cloudinary_image_downsize')){
-    /**
-     * @return array|false
-     */
-    function __maybe_cloudinary_image_downsize($out, $id, $size){
-    	if($out){
-    		return $out; // A truthy value from the filter will effectively short-circuit down-sizing the image, returning that value instead.
-    	}
-        if(!wp_attachment_is_image($id)){
-    		return $out;
-    	}
-        if(!is_scalar($size)){
-            return $out; // Discard non-scalars.
-        }
-        $cache_key = 'cloudinary_image_sizes';
-    	if(!__isset_array_cache($cache_key, $size)){
-    		return $out;
-    	}
-        $args = (array) __get_array_cache($cache_key, $size, []);
-        $file_info = __cloudinary_file_info($id, $args['options']);
-        if(is_wp_error($file_info)){
-            return $out;
-        }
-        return [$file_info['url'], $file_info['width'], $file_info['height'], true];
-    }
-}
-
-if(!function_exists('__maybe_cloudinary_image_size_names_choose')){
+if(!function_exists('__use_lessphp')){
 	/**
-	 * @return array
+	 * @return string|WP_Error
 	 */
-	function __maybe_cloudinary_image_size_names_choose($sizes){
-        $cache_key = 'cloudinary_image_sizes';
-        if(!__isset_cache($cache_key)){
-    		return $sizes;
-    	}
-        $cloudinary_image_sizes = (array) __get_cache($cache_key, []);
-		foreach($cloudinary_image_sizes as $size => $args){
-			$sizes[$size] = $args['name'];
+	function __use_lessphp($ver = '5.2.2'){
+		$key = 'lessphp-' . $ver;
+	    if(__isset_cache($key)){
+	        return (string) __get_cache($key, '');
+	    }
+		$class = 'Less_Autoloader';
+		if(class_exists($class)){
+	        return ''; // Already handled outside of this function.
+	    }
+		$dir = __remote_lib('https://github.com/wikimedia/less.php/archive/refs/tags/v' . $ver . '.zip', 'less.php-' . $ver);
+		if(is_wp_error($dir)){
+			return $dir;
 		}
-		return $sizes;
+		$file = $dir . '/lib/Less/Autoloader.php';
+		if(!file_exists($file)){
+			return __error(translate('File doesn&#8217;t exist?'), $file);
+		}
+		require_once($file);
+		if(!class_exists($class)){
+			return __error(sprintf(translate('Missing parameter(s): %s'), $class) . '.');
+		}
+		__set_cache($key, $dir);
+		return $dir;
 	}
-}
-
-if(!function_exists('__use_cloudinary_php')){
-    /**
-     * @return string|WP_Error
-     */
-    function __use_cloudinary_php($ver = '1.20.2'){
-    	$key = 'cloudinary-php-' . $ver;
-        if(__isset_cache($key)){
-            return (string) __get_cache($key, '');
-        }
-    	$class = 'Cloudinary';
-    	if(class_exists($class)){
-            return ''; // Already handled outside of this function.
-        }
-    	$dir = __remote_lib('https://github.com/cloudinary/cloudinary_php/archive/refs/tags/' . $ver . '.zip', 'cloudinary_php-' . $ver);
-    	if(is_wp_error($dir)){
-    		return $dir;
-    	}
-    	$file = $dir . '/autoload.php';
-    	if(!file_exists($file)){
-            $error_msg = translate('File does not exist! Please double check the name and try again.');
-            $error_msg = __first_p($error_msg);
-            return __error($error_msg);
-    	}
-    	require_once($file);
-        if(!class_exists($class)){
-            $error_msg = sprintf(translate('Missing parameter(s): %s'), $class) . '.';
-    		return __error($error_msg);
-    	}
-        $file = $dir . '/src/Helpers.php';
-    	if(file_exists($file)){
-            require_once($file); // Fallback to legacy autoloader.
-    	}
-    	__set_cache($key, $dir);
-    	return $dir;
-    }
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1473,7 +1201,10 @@ if(!function_exists('__cf7_error')){
 	 */
 	function __cf7_error($message = ''){
 		if(empty($message)){
-			$message = translate('Contact form not found.', 'contact-form-7');
+			//$message = translate('Contact form not found.', 'contact-form-7');
+            // __('An error occurred.');
+            $message = translate('An error occurred while processing your request. Please try again later.');
+            $message = __first_p($message);
 		}
 		$error = translate('Error:', 'contact-form-7');
 		return sprintf('<p class="wpcf7-contact-form-not-found"><strong>%1$s</strong> %2$s</p>', esc_html($error), esc_html($message));
@@ -2795,6 +2526,15 @@ if(!function_exists('__cf7_maybe_filter_shortcode_tag_output')){
 //
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+if(!function_exists('__clear_cookie')){
+    /**
+     * @return void
+     */
+    function __clear_cookie($name = ''){
+        __unset_cookie($name);
+    }
+}
+
 if(!function_exists('__set_cookie')){
     /**
      * @return void
@@ -2804,8 +2544,8 @@ if(!function_exists('__set_cookie')){
             return;
         }
         $secure = ('https' === parse_url(home_url(), PHP_URL_SCHEME));
-        $value = wp_unslash($value);
-        $value = esc_attr($value);
+        //$value = wp_unslash($value);
+        //$value = esc_attr($value);
         setcookie($name, $value, $expires, COOKIEPATH, COOKIE_DOMAIN, $secure);
     }
 }
@@ -2828,7 +2568,7 @@ if(!function_exists('__unset_cookie')){
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
-// Date and time
+// Date/Time
 //
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -2946,7 +2686,7 @@ if(!function_exists('__timezone_string')){
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
-// Debug
+// Debugging
 //
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -3133,41 +2873,6 @@ if(!function_exists('__enqueue')){
     }
 }
 
-if(!function_exists('__enqueue_ace')){
-    /**
-     * This function MUST be called inside the 'admin_enqueue_scripts', 'login_enqueue_scripts' or 'wp_enqueue_scripts' action hooks.
-     *
-     * @return string|WP_Error
-     */
-    function __enqueue_ace($deps = [], $version = '1.36.2'){
-        $base_path = 'https://cdn.jsdelivr.net/npm/ace-builds@' . $version . '/src-min';
-        $handle = __enqueue_asset('ace', $base_path . '/ace.js', $deps, $version);
-        if(is_wp_error($handle)){
-            return $handle;
-        }
-		$handle = __enqueue_asset('ace-language-tools', $base_path . '/ext-language_tools.min.js', ['ace'], $version);
-        if(is_wp_error($handle)){
-            return $handle;
-        }
-        $data = "if(!_.isUndefined(ace)){ ace.config.set('basePath', '$base_path'); ace.require('ace/ext/language_tools'); }";
-        wp_add_inline_script('ace', $data);
-        return $handle;
-    }
-}
-
-if(!function_exists('__enqueue_inputmask')){
-    /**
-     * This function MUST be called inside the 'admin_enqueue_scripts', 'login_enqueue_scripts' or 'wp_enqueue_scripts' action hooks.
-     *
-     * @return string|WP_Error
-     */
-    function __enqueue_inputmask($deps = [], $version = '5.0.9'){
-        $base_path = 'https://cdn.jsdelivr.net/npm/inputmask@' . $version . '/dist';
-        $handle = __enqueue_asset('inputmask', $base_path . '/query.inputmask.min.js', $deps, $version);
-        return $handle;
-    }
-}
-
 if(!function_exists('__local_admin_enqueue')){
     /**
      * @return string|WP_Error
@@ -3344,7 +3049,7 @@ if(!function_exists('__maybe_enqueue_login_assets')){
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
-// Errors
+// Error Handling
 //
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -3394,6 +3099,15 @@ if(!function_exists('__exit_with_error')){
         $html .= '</p>';
         wp_die($html, $title, $args);
 	}
+}
+
+if(!function_exists('__in_debug')){
+	/**
+	 * @return bool
+	 */
+	function __in_debug(){
+        return (defined('WP_DEBUG') and WP_DEBUG);
+    }
 }
 
 if(!function_exists('__seems_error')){
@@ -3550,6 +3264,25 @@ if(!function_exists('__fs_direct')){
 			return __error(translate('Filesystem error.'));
 		}
 		return $wp_filesystem;
+	}
+}
+
+if(!function_exists('__get_file_sample')){
+	/**
+	 * @return string
+	 */
+	function __get_file_sample($tmpfname = ''){
+		if(!is_file($tmpfname)){
+			return '';
+		}
+		$tmpf = fopen($tmpfname, 'rb'); // Retrieve a sample of the response body for debugging purposes.
+		if(!$tmpf){
+			return '';
+		}
+		$response_size = apply_filters('download_url_error_max_body_size', KB_IN_BYTES); // Filters the maximum error response body size. Default 1 KB.
+		$sample = fread($tmpf, $response_size);
+		fclose($tmpf);
+		return $sample;
 	}
 }
 
@@ -3932,6 +3665,67 @@ if(!function_exists('__url_to_dir')){
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
+// GitHub
+//
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+if(!function_exists('__github_api_token')){
+    /**
+     * @return void
+     */
+    function __github_api_token($token = ''){
+        if(!$token){
+            return;
+        }
+        $key = 'github_api_token';
+		__set_cache('github_api_token', $key);
+		__add_filter_once('http_request_args', '__maybe_add_github_api_token', 10, 2);
+    }
+}
+
+if(!function_exists('__github_api_token_exists')){
+    /**
+     * @return void
+     */
+    function __github_api_token_exists(){
+        $key = 'github_api_token';
+		return __isset_cache($key);
+    }
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// These functions’ access is marked private. This means they are not intended for use by plugin or theme developers, only in other core functions.
+//
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+if(!function_exists('__maybe_add_github_api_token')){
+	/**
+	 * This function MUST be called inside the 'http_request_args' filter hook.
+	 *
+	 * @return array
+	 */
+	function __maybe_add_github_api_token($parsed_args, $url){
+		if(!doing_filter('http_request_args')){
+	        return $parsed_args;
+	    }
+		$token = (string) __get_cache('github_api_token', '');
+		if(!$token){
+            return $parsed_args;
+        }
+        if(0 !== strpos($url, 'https://api.github.com/')){
+            return $parsed_args;
+        }
+        if(!isset($parsed_args['headers'])){
+            $parsed_args['headers'] = [];
+        }
+        $parsed_args['headers']['Authorization'] = 'token ' . $token;
+		return $parsed_args;
+	}
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
 // Google
 //
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -4016,403 +3810,6 @@ if(!function_exists('__maybe_hide_recaptcha_badge')){
 	    }
 		__echo_hide_recaptcha_badge();
 	}
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//
-// Hide
-//
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-if(!function_exists('__hide_others_media')){
-    /**
-     * @return void
-     */
-    function __hide_others_media($capability = 'edit_others_posts'){
-        __set_cache('hide_others_media', [
-            'capability' => $capability,
-        ]);
-        __add_filter_once('ajax_query_attachments_args', '__maybe_hide_others_media');
-    }
-}
-
-if(!function_exists('__hide_others_posts')){
-    /**
-     * @return void
-     */
-    function __hide_others_posts($capability = 'edit_others_posts'){
-        __set_cache('hide_others_posts', [
-            'capability' => $capability,
-        ]);
-        __add_action_once('current_screen', '__maybe_hide_others_posts_count');
-        __add_action_once('pre_get_posts', '__maybe_hide_others_posts_query_args');
-    }
-}
-
-if(!function_exists('__hide_the_dashboard')){
-    /**
-     * @return void
-     */
-    function __hide_the_dashboard($capability = 'edit_posts', $location = ''){
-        __set_cache('hide_the_dashboard', [
-            'capability' => $capability,
-    		'location' => $location,
-        ]);
-        __add_action_once('admin_init', '__maybe_hide_the_dashboard');
-    }
-}
-
-if(!function_exists('__hide_the_frontend')){
-    /**
-     * @return void
-     */
-    function __hide_the_frontend($capability = 'read', $exclude_special_pages = [], $exclude_other_pages = []){
-        __set_cache('hide_the_frontend', [
-            'capability' => $capability,
-            'exclude_other_pages' => $exclude_other_pages,
-    		'exclude_special_pages' => $exclude_special_pages,
-        ]);
-        __add_action_once('template_redirect', '__maybe_hide_the_frontend');
-    }
-}
-
-if(!function_exists('__hide_the_rest_api')){
-    /**
-     * @return void
-     */
-    function __hide_the_rest_api($capability = 'read'){
-        __set_cache('hide_the_rest_api', [
-            'capability' => $capability,
-        ]);
-        __add_filter_once('rest_authentication_errors', '__maybe_hide_the_rest_api');
-    }
-}
-
-if(!function_exists('__hide_the_toolbar')){
-    /**
-     * @return void
-     */
-    function __hide_the_toolbar($capability = 'edit_posts'){
-        __set_cache('hide_the_toolbar', [
-            'capability' => $capability,
-        ]);
-        __add_filter_once('show_admin_bar', '__maybe_hide_the_toolbar');
-    }
-}
-
-if(!function_exists('__hide_uploads_subdir')){
-    /**
-     * @return void
-     */
-    function __hide_uploads_subdir($subdir = '', $capability = 'edit_others_posts', $exclude_public_media = false, $exclude_other_media = [], $file = ''){
-        $args = [
-            'capability' => $capability,
-            'exclude_other_media' => $exclude_other_media,
-            'exclude_public_media' => $exclude_public_media,
-            'subdir' => $subdir,
-        ];
-        if(!$file){
-            $file = __caller_file(1); // One level above.
-    	}
-        $args['file'] = $file;
-        return __add_hiding_rule($args);
-    }
-}
-
-if(!function_exists('__hide_wp')){
-    /**
-     * @return void
-     */
-    function __hide_wp(){
-        __local_login_header();
-        __set_cache('hide_wp', true);
-    	__add_action_once('admin_init', '__maybe_hide_wp_from_admin');
-        __add_action_once('wp_before_admin_bar_render', '__maybe_hide_wp_from_admin_bar');
-    }
-}
-
-if(!function_exists('__local_login_header')){
-    /**
-     * @return void
-     */
-    function __local_login_header(){
-        __set_cache('local_login_header', true);
-        __add_filter_once('login_headertext', '__maybe_local_login_headertext');
-        __add_filter_once('login_headerurl', '__maybe_local_login_headerurl');
-    }
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//
-// These functions’ access is marked private. This means they are not intended for use by plugin or theme developers, only in other core functions.
-//
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-if(!function_exists('__maybe_hide_others_media')){
-    /**
-	 * This function MUST be called inside the 'ajax_query_attachments_args' filter hook.
-	 *
-     * @return array
-     */
-    function __maybe_hide_others_media($query){
-        if(!doing_filter('ajax_query_attachments_args')){ // Too early or too late.
-	        return;
-	    }
-        $hide_others_media = (array) __get_cache('hide_others_media', []);
-    	if(!$hide_others_media){
-    		return;
-    	}
-        if(current_user_can($hide_others_media['capability'])){
-            return $query;
-        }
-        $query['author'] = get_current_user_id();
-        return $query;
-    }
-}
-
-if(!function_exists('__maybe_hide_others_posts_count')){
-    /**
-	 * This function MUST be called inside the 'current_screen' action hook.
-	 *
-     * @return void
-     */
-    function __maybe_hide_others_posts_count(){
-        global $current_screen, $pagenow;
-        if(!doing_action('current_screen')){ // Too early or too late.
-	        return;
-	    }
-        $hide_others_posts = (array) __get_cache('hide_others_posts', []);
-    	if(!$hide_others_posts){
-    		return;
-    	}
-        if('edit.php' !== $pagenow){
-            return;
-        }
-        if(current_user_can($hide_others_posts['capability'])){
-    		return;
-    	}
-        __add_filter_once('views_' . $current_screen->id, '__maybe_hide_others_posts_count_from_views');
-    }
-}
-
-if(!function_exists('__maybe_hide_others_posts_count_from_views')){
-    /**
-	 * This function MUST be called inside the 'views_SCREEN_ID' filter hook.
-	 *
-     * @return array
-     */
-    function __maybe_hide_others_posts_count_from_views($views){
-        $current_filter = current_filter();
-        if(!__str_starts_with($current_filter, 'views_')){ // Too early or too late.
-            return;
-        }
-        foreach($views as $index => $view){
-            $views[$index] = preg_replace('/ <span class="count">\([0-9]+\)<\/span>/', '', $view);
-        }
-    	return $views;
-    }
-}
-
-if(!function_exists('__maybe_hide_others_posts_query_args')){
-    /**
-	 * This function MUST be called inside the 'pre_get_posts' action hook.
-	 *
-     * @return array
-     */
-    function __maybe_hide_others_posts_query_args($query){
-        global $pagenow;
-        if(!doing_action('pre_get_posts')){ // Too early or too late.
-	        return;
-	    }
-        $hide_others_posts = (array) __get_cache('hide_others_posts', []);
-    	if(!$hide_others_posts){
-    		return;
-    	}
-        if('edit.php' !== $pagenow){
-            return;
-        }
-        if(current_user_can($hide_others_posts['capability'])){
-    		return;
-    	}
-        $query->set('author', get_current_user_id());
-        return $query;
-    }
-}
-
-if(!function_exists('__maybe_hide_the_dashboard')){
-    /**
-	 * This function MUST be called inside the 'admin_init' action hook.
-	 *
-     * @return void
-     */
-    function __maybe_hide_the_dashboard(){
-        if(!doing_action('admin_init')){ // Too early or too late.
-	        return;
-	    }
-        $hide_the_dashboard = (array) __get_cache('hide_the_dashboard', []);
-    	if(!$hide_the_dashboard){
-    		return;
-    	}
-        if(wp_doing_ajax()){
-            return;
-        }
-        if(current_user_can($hide_the_dashboard['capability'])){
-            return;
-        }
-        $location = wp_validate_redirect($hide_the_dashboard['location'], home_url());
-    	wp_safe_redirect($location);
-    	exit;
-    }
-}
-
-if(!function_exists('__maybe_hide_the_frontend')){
-    /**
-	 * This function MUST be called inside the 'template_redirect' action hook.
-	 *
-     * @return void
-     */
-    function __maybe_hide_the_frontend(){
-        if(!doing_action('template_redirect')){ // Too early or too late.
-	        return;
-	    }
-        $hide_the_frontend = (array) __get_cache('hide_the_frontend', []);
-    	if(!$hide_the_frontend){
-    		return;
-    	}
-        $exclude_other_pages = in_array(get_the_ID(), (array) $hide_the_frontend['exclude_other_pages']);
-    	$exclude_special_pages = ((is_front_page() and in_array('front_page', (array) $hide_the_frontend['exclude_special_pages'])) or (is_home() and in_array('home', (array) $hide_the_frontend['exclude_special_pages'])));
-        if($exclude_other_pages or $exclude_special_pages){
-            return;
-        }
-        if(!is_user_logged_in()){
-            auth_redirect();
-        }
-        if(current_user_can($hide_the_frontend['capability'])){
-            return;
-        }
-        __exit_with_error(translate('Sorry, you are not allowed to access this page.'), translate('You need a higher level of permission.'), 403);
-    }
-}
-
-if(!function_exists('__maybe_hide_the_rest_api')){
-    /**
-	 * This function MUST be called inside the 'rest_authentication_errors' filter hook.
-	 *
-     * @return null|WP_Error
-     */
-    function __maybe_hide_the_rest_api($errors = null){
-        if(!doing_filter('rest_authentication_errors')){ // Too early or too late.
-	        return $errors;
-	    }
-        if(!is_null($errors)){
-    		return $errors; // WP_Error if authentication error or true if authentication succeeded.
-    	}
-        $hide_the_rest_api = (array) __get_cache('hide_the_rest_api', []);
-    	if(!$hide_the_rest_api){
-    		return $errors;
-    	}
-        if(current_user_can($hide_the_rest_api['capability'])){
-            return $errors;
-        }
-        return __error(translate('You need a higher level of permission.'), [
-    		'status' => 401,
-    	]);
-    }
-}
-
-if(!function_exists('__maybe_hide_the_toolbar')){
-    /**
-	 * This function MUST be called inside the 'show_admin_bar' filter hook.
-	 *
-     * @return bool
-     */
-    function __maybe_hide_the_toolbar($show = false){
-        if(!doing_filter('show_admin_bar')){ // Too early or too late.
-	        return $show;
-	    }
-        $hide_the_toolbar = (array) __get_cache('hide_the_toolbar', []);
-    	if(!$hide_the_toolbar){
-    		return $show;
-    	}
-        if(current_user_can($hide_the_toolbar['capability'])){
-            return $show;
-        }
-        $show = false;
-        return $show;
-    }
-}
-
-if(!function_exists('__maybe_hide_wp_from_admin')){
-    /**
-	 * This function MUST be called inside the 'admin_init' action hook.
-	 *
-     * @return void
-     */
-    function __maybe_hide_wp_from_admin(){
-        if(!doing_action('admin_init')){ // Too early or too late.
-	        return;
-	    }
-        $hide_wp = (bool) __get_cache('hide_wp', false);
-    	if(!$hide_wp){
-    		return;
-    	}
-        remove_action('welcome_panel', 'wp_welcome_panel');
-    }
-}
-
-if(!function_exists('__maybe_hide_wp_from_admin_bar')){
-    /**
-	 * This function MUST be called inside the 'wp_before_admin_bar_render' action hook.
-	 *
-     * @return void
-     */
-    function __maybe_hide_wp_from_admin_bar(){
-        global $wp_admin_bar;
-        if(!doing_action('wp_before_admin_bar_render')){ // Too early or too late.
-	        return;
-	    }
-        $hide_wp = (bool) __get_cache('hide_wp', false);
-    	if(!$hide_wp){
-    		return;
-    	}
-    	$wp_admin_bar->remove_node('wp-logo');
-    }
-}
-
-if(!function_exists('__maybe_local_login_headertext')){
-    /**
-	 * This function MUST be called inside the 'login_headertext' filter hook.
-	 *
-     * @return string
-     */
-    function __maybe_local_login_headertext($login_header_text = ''){
-        if(!doing_filter('login_headertext')){ // Too early or too late.
-	        return $login_header_text;
-	    }
-    	$local_login_header = (bool) __get_cache('local_login_header', false);
-    	if(!$local_login_header){
-            return $login_header_text;
-    	}
-    	return get_option('blogname');
-    }
-}
-
-if(!function_exists('__maybe_local_login_headerurl')){
-    /**
-	 * This function MUST be called inside the 'login_headerurl' filter hook.
-	 *
-     * @return string
-     */
-    function __maybe_local_login_headerurl($login_header_url = ''){
-        if(!doing_filter('login_headerurl')){ // Too early or too late.
-	        return $login_header_url;
-	    }
-        $local_login_header = (bool) __get_cache('local_login_header', false);
-    	if(!$local_login_header){
-            return $login_header_url;
-    	}
-        return home_url();
-    }
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -4767,11 +4164,10 @@ if(!function_exists('__md5_closure')){
 		if(!$data instanceof \Closure){
 			return __error(translate('Invalid object type.'));
 		}
-		$wrapper = __serializable_closure($data);
-		if(is_wp_error($wrapper)){
-			return $wrapper;
+		$serialized = __serialize_closure($data);
+        if(is_wp_error($serialized)){
+			return $serialized;
 		}
-		$serialized = serialize($wrapper);
 		if(!$spl_object_hash){
 			$spl_object_hash = spl_object_hash($data);
 			$serialized = str_replace($spl_object_hash, 'spl_object_hash', $serialized);
@@ -4798,33 +4194,6 @@ if(!function_exists('__md5_to_uuid4')){
 //
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-if(!function_exists('__add_4k_image_size')){
-	/**
-	 * @return void
-	 */
-	function __add_4k_image_size(){
-		__add_image_size('4K', 3840, 3840);
-	}
-}
-
-if(!function_exists('__add_full_hd_image_size')){
-	/**
-	 * @return void
-	 */
-	function __add_full_hd_image_size(){
-		__add_image_size('Full HD', 1920, 1920);
-	}
-}
-
-if(!function_exists('__add_hd_image_size')){
-	/**
-	 * @return void
-	 */
-	function __add_hd_image_size(){
-		__add_image_size('HD', 1280, 1280);
-	}
-}
-
 if(!function_exists('__add_image_size')){
 	/**
 	 * @return void
@@ -4838,17 +4207,6 @@ if(!function_exists('__add_image_size')){
 		add_image_size($size, $width, $height, $crop);
 		__set_array_cache('image_sizes', $size, $name);
 		__add_filter_once('image_size_names_choose', '__maybe_add_image_size_names');
-	}
-}
-
-if(!function_exists('__add_larger_image_sizes')){
-	/**
-	 * @return void
-	 */
-	function __add_larger_image_sizes(){
-		__add_hd_image_size();
-		__add_full_hd_image_size();
-		__add_4k_image_size();
 	}
 }
 
@@ -5056,6 +4414,45 @@ if(!function_exists('__maybe_add_image_size_names')){
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
+// Meta Box
+//
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+if(!function_exists('__mb_image_switch')){
+	/**
+	 * @return array|WP_Error
+	 */
+	function __mb_image_switch($id = '', $args = []){
+        if(!$id){
+            $error_msg = translate('The "%s" argument must be a non-empty string.');
+            $error_msg = sprintf($error_msg, 'id');
+            return __error($error_msg);
+        }
+        $defaults = [
+            'columns' => 4,
+            'icon' => 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyBpZD0iTGF5ZXJfMSIgZGF0YS1uYW1lPSJMYXllciAxIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj4KICA8cGF0aCBkPSJNNTEyLDMwMS4xOGgtNjUuNjZjLTUuMTIsMjEuMDgtMTMuMjUsNDAuNjYtMjQuNCw1OC4xM2w0Ni4zOCw0Ni4zOC02My4yNSw2My4yNS00Ni4zOC00Ni4zOGMtMTcuNDcsMTAuODQtMzcuMDQsMTguOTctNTcuNTIsMjMuNzl2NjUuNjZoLTkwLjM1di02NS42NmMtMjAuNDgtNC44Mi00MC4wNi0xMi45NS01Ny41Mi0yMy43OWwtNDYuMzgsNDYuMzgtNjMuODUtNjMuODUsNDYuMzgtNDYuMzhjLTEwLjg0LTE3LjQ3LTE4Ljk3LTM3LjA0LTIzLjc5LTU3LjUySDB2LTg5LjQ1aDY1LjM2YzQuODItMjEuMDgsMTMuMjUtNDAuNjYsMjQuMDktNTguNDNsLTQ2LjM4LTQ2LjM4LDYzLjI1LTYzLjI1LDQ2LjM4LDQ2LjM4YzE3LjQ3LTExLjE0LDM3LjM1LTE5LjI4LDU4LjEzLTI0LjRWMGg5MC4zNXY2NS42NmMyMC40OCw0LjgyLDQwLjA2LDEyLjk1LDU3LjUyLDIzLjc5bDQ2LjM4LTQ2LjM4LDYzLjg1LDYzLjg1LTQ2LjM4LDQ2LjM4YzEwLjg0LDE3Ljc3LDE5LjI4LDM3LjM1LDI0LjA5LDU4LjQzaDY1LjM2djg5LjQ1Wk0yNTYsMzQ2LjM1YzUwLDAsOTAuMzUtNDAuMzYsOTAuMzUtOTAuMzVzLTQwLjM2LTkwLjM1LTkwLjM1LTkwLjM1LTkwLjM1LDQwLjM2LTkwLjM1LDkwLjM1LDQwLjM2LDkwLjM1LDkwLjM1LDkwLjM1WiIvPgo8L3N2Zz4=',
+            'name' => '',
+        ];
+        $args = wp_parse_args($args, $defaults);
+        if(!$args['name']){
+            $args['name'] = $id;
+        }
+        $field = [
+            'after' => '</div></div></div>',
+            'before' => '<div style="padding: 6px; margin: 6px 0 0;"><div style="background-color: #f8f9fa; border: 1px solid rgba(0, 0, 0, 0.125); border-radius: 0.25rem; padding: 20px 20px 8px;"><div style="text-align: center;"><img src="' . $args['icon'] . '" style="max-height: 40px;"></div><div style="text-align: center;"><p>' . $args['name'] . '</p></div><div style="text-align: center;">',
+            'columns' => $args['columns'],
+            'id' => $id,
+            'on_label' => translate('Yes'),
+            'off_label' => translate('No'),
+            'style' => 'square',
+            'type' => 'switch',
+        ];
+        return $field;
+    }
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
 // Miscellaneous
 //
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -5094,20 +4491,6 @@ if(!function_exists('__breadcrumbs')){
 	    }
 	    $separator = ' ' . trim($separator) . ' ';
 		return implode($separator, $elements);
-	}
-}
-
-if(!function_exists('__clone_role')){
-	/**
-	 * @return void|WP_Role
-	 */
-	function __clone_role($source = '', $destination = '', $display_name = ''){
-		$role = get_role($source);
-		if(is_null($role)){
-			return;
-		}
-		$destination = __canonicalize($destination);
-		return add_role($destination, $display_name, $role->capabilities);
 	}
 }
 
@@ -5170,6 +4553,92 @@ if(!function_exists('__custom_login_logo')){
     }
 }
 
+if(!function_exists('__delete_options')){
+	/**
+	 * @return void
+	 */
+	function __delete_options($prefix = ''){
+		global $wpdb;
+        if(!$prefix){
+            return;
+        }
+        $options = $wpdb->get_col("SELECT option_name FROM $wpdb->options WHERE option_name LIKE '{$prefix}%'");
+        foreach($options as $option){
+            delete_option($option);
+        }
+	}
+}
+
+if(!function_exists('__exec')){
+    /**
+     * @return array|WP_Error
+     */
+    function __exec($command = ''){
+        $output = [];
+		if(!function_exists('exec')){
+			$error_msg = translate('Function %s used incorrectly in PHP.');
+			$error_msg = sprintf($error_msg, 'exec');
+			return __error($error_msg);
+		}
+        try {
+            $result = exec($command, $output);
+        } catch(\Throwable $t){
+            $result = __error($t->getMessage());
+        } catch(\Exception $e){
+            $result = __error($e->getMessage());
+        }
+        if(is_wp_error($result)){
+            return $result;
+        }
+        return $output;
+    }
+}
+
+if(!function_exists('__format_atts')){
+    /**
+     * Returns a formatted string of HTML attributes.
+     *
+     * @param array $atts Associative array of attribute name and value pairs.
+     * @return string Formatted HTML attributes.
+     */
+    function __format_atts($atts = [], $tag = ''){
+        $atts_filtered = [];
+        foreach($atts as $name => $value){
+            $name = strtolower(trim($name));
+            if(!preg_match('/^[a-z_:][a-z_:.0-9-]*$/', $name)){
+                continue;
+            }
+            static $boolean_attributes = ['checked', 'disabled', 'inert', 'multiple', 'readonly', 'required', 'selected'];
+            if(in_array($name, $boolean_attributes) and '' === $value){
+                $value = false;
+            }
+            if(is_numeric($value)){
+                $value = (string) $value;
+            }
+            if(null === $value or false === $value){
+                unset($atts_filtered[$name]);
+            } elseif(true === $value){
+                $atts_filtered[$name] = $name; // boolean attribute
+            } elseif(is_string($value)){
+                $atts_filtered[$name] = trim($value);
+            }
+        }
+        $output = '';
+        foreach($atts_filtered as $name => $value){
+            $output .= sprintf(' %1$s="%2$s"', $name, esc_attr($value));
+        }
+        $output = trim($output);
+        $tag = trim($tag);
+        if(!$tag){
+            return $output;
+        }
+        if(!$output){
+            return $tag;
+        }
+        return $tag . ' ' . $output;
+    }
+}
+
 if(!function_exists('__format_function')){
 	/**
 	 * @return string
@@ -5201,20 +4670,6 @@ if(!function_exists('__go_to')){
 	 */
 	function __go_to($str = ''){
 		return trim(str_replace('&larr;', '', sprintf(translate_with_gettext_context('&larr; Go to %s', 'site'), $str)));
-	}
-}
-
-if(!function_exists('__has_btn_class')){
-	/**
-	 * @return bool
-	 */
-	function __has_btn_class($class = ''){
-	    $class = __remove_whitespaces($class);
-	    preg_match_all('/btn-[A-Za-z][-A-Za-z0-9_:.]*/', $class, $matches);
-		$matches = array_filter($matches[0], function($match){
-			return !in_array($match, ['btn-block', 'btn-lg', 'btn-sm']);
-		});
-		return (bool) $matches;
 	}
 }
 
@@ -5250,6 +4705,18 @@ if(!function_exists('__has_shortcode')){
 	}
 }
 
+if(!function_exists('__hide_wp')){
+    /**
+     * @return void
+     */
+    function __hide_wp(){
+        __local_login_header();
+        __set_cache('hide_wp', true);
+    	__add_action_once('admin_init', '__maybe_hide_wp_from_admin');
+        __add_action_once('wp_before_admin_bar_render', '__maybe_hide_wp_from_admin_bar');
+    }
+}
+
 if(!function_exists('__host_url')){
 	/**
      * @return string
@@ -5279,6 +4746,37 @@ if(!function_exists('__is_false')){
 	function __is_false($data = ''){
 		return in_array((string) $data, ['0', 'false', 'off'], true);
 	}
+}
+
+if(!function_exists('__is_front')){
+	/**
+	 * @return bool
+	 */
+    function __is_front(){
+        global $wp_query;
+        if(is_admin()){
+            return false; // The current request is for an administrative interface page.
+        }
+        if(wp_doing_ajax()){
+            return false; // The current request is a WordPress Ajax request.
+        }
+        if(wp_is_serving_rest_request()){
+            return false; // WordPress is currently serving a REST API request.
+        }
+        if(wp_is_json_request()){
+            return false; // The current request is a JSON request, or is expecting a JSON response.
+        }
+        if(wp_is_jsonp_request()){
+            return false; // The current request is a JSONP request, or is expecting a JSONP response.
+        }
+        if(defined('XMLRPC_REQUEST') and XMLRPC_REQUEST){
+            return false; // The current request is a WordPress XML-RPC request.
+        }
+        if(wp_is_xml_request() or isset($wp_query) and (function_exists('is_feed') and is_feed() or function_exists('is_comment_feed') and is_comment_feed() or function_exists('is_trackback') and is_trackback())){
+            return false; // The current request is an XML request, or is expecting an XML response.
+        }
+        return true;
+    }
 }
 
 if(!function_exists('__is_name')){
@@ -5390,6 +4888,40 @@ if(!function_exists('__is_true')){
 	}
 }
 
+if(!function_exists('__json_decode')){
+	/**
+	 * Alias for json_decode.
+	 *
+	 * Differs from json_decode in that it will return a WP_Error on failure.
+	 *
+	 * Retrieves the parameters from a JSON-formatted body.
+	 *
+	 * @return array|stdClass|WP_Error
+	 */
+	function __json_decode($json = '', $associative = null, $depth = 512, $flags = 0){
+		$json = trim($json);
+		if($associative or ($flags & JSON_OBJECT_AS_ARRAY)){
+			$empty = [];
+		} else {
+			$empty = new \stdClass;
+		}
+		if(empty($json)){
+			return $empty;
+		}
+		$params = json_decode($json, $associative, $depth, $flags); // Parses the JSON parameters.
+		if(is_null($params) and JSON_ERROR_NONE !== json_last_error()){ // Check for a parsing error.
+			$error_data = [
+				'json_error_code' => json_last_error(),
+				'json_error_message' => json_last_error_msg(),
+				'status' => \WP_Http::BAD_REQUEST,
+			];
+            $error_msg = translate('Invalid JSON body passed.');
+			return __error($error_msg, $error_data);
+		}
+		return $params;
+	}
+}
+
 if(!function_exists('__load_admin_textdomain')){
 	/**
 	 * @return bool
@@ -5405,6 +4937,17 @@ if(!function_exists('__load_admin_textdomain')){
         }
         return load_textdomain($domain, $mofile, $locale);
 	}
+}
+
+if(!function_exists('__local_login_header')){
+    /**
+     * @return void
+     */
+    function __local_login_header(){
+        __set_cache('local_login_header', true);
+        __add_filter_once('login_headertext', '__maybe_local_login_headertext');
+        __add_filter_once('login_headerurl', '__maybe_local_login_headerurl');
+    }
 }
 
 if(!function_exists('__object_to_array')){
@@ -5483,6 +5026,92 @@ if(!function_exists('__properties_exists')){
 	}
 }
 
+if(!function_exists('__table')){
+    /**
+     * @return string
+     */
+    function __table($data = [], $headers = [], $args = []){
+        $data = array_values($data);
+        if(!$data){
+            return translate('No posts found.');
+        }
+        $defaults = [
+            'bordered' => false,
+            'borderless' => false,
+            'hover' => false,
+            'responsive' => false,
+            'sm' => false,
+            'striped' => false,
+        ];
+        $args = wp_parse_args($args, $defaults);
+        $classes = ['table'];
+        $html = '';
+        $responsive = '';
+        if($args['bordered']){
+            $classes[] = 'table-bordered';
+        }
+        if($args['borderless']){
+            $classes[] = 'table-borderless';
+        }
+        if($args['hover']){
+            $classes[] = 'table-hover';
+        }
+        if($args['responsive']){
+            if(in_array($args['responsive'], ['sm', 'md', 'lg', 'xl'])){
+                $responsive = 'table-responsive-' . $args['responsive'];
+            } else {
+                $responsive = 'table-responsive';
+            }
+        }
+        if($args['sm']){
+            $classes[] = 'table-sm';
+        }
+        if($args['striped']){
+            $classes[] = 'table-striped';
+        }
+        $max_cols = 0;
+        if($headers){
+            $max_cols = count($headers);
+        } else {
+            $max_cols = count($data[0]);
+        }
+        if($responsive){
+            $html .= '<div class="' . $responsive . '">';
+        }
+        $atts = [
+            'class' => implode(' ', array_unique(array_map('trim', $classes))),
+        ];
+        $html .= '<' . __format_atts($atts, 'table') . '>';
+        if($headers){
+            $html .= '<thead>';
+            $html .= '<tr>';
+            foreach($headers as $header){
+                $html .= '<th>' . $header . '</th>';
+            }
+            $html .= '</tr>';
+            $html .= '</thead>';
+        }
+        $html .= '<tbody>';
+        foreach($data as $row){
+            $row = array_values($row);
+            $html .= '<tr>';
+            foreach($row as $index => $column){
+                if($index === $max_cols){
+                    break;
+                }
+                $html .= '<td>' . $column . '</td>';
+            }
+            $html .= '</tr>';
+        }
+        $html .= '</tbody>';
+        $html .= '</table>';
+        if($responsive){
+            $html .= '</div>';
+        }
+        return $html;
+    }
+}
+
 if(!function_exists('__test')){
 	/**
 	 * @return void
@@ -5513,6 +5142,79 @@ if(!function_exists('__validate_redirect_to')){
 //
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+if(!function_exists('__maybe_hide_wp_from_admin')){
+    /**
+	 * This function MUST be called inside the 'admin_init' action hook.
+	 *
+     * @return void
+     */
+    function __maybe_hide_wp_from_admin(){
+        if(!doing_action('admin_init')){ // Too early or too late.
+	        return;
+	    }
+        $hide_wp = (bool) __get_cache('hide_wp', false);
+    	if(!$hide_wp){
+    		return;
+    	}
+        remove_action('welcome_panel', 'wp_welcome_panel');
+    }
+}
+
+if(!function_exists('__maybe_hide_wp_from_admin_bar')){
+    /**
+	 * This function MUST be called inside the 'wp_before_admin_bar_render' action hook.
+	 *
+     * @return void
+     */
+    function __maybe_hide_wp_from_admin_bar(){
+        global $wp_admin_bar;
+        if(!doing_action('wp_before_admin_bar_render')){ // Too early or too late.
+	        return;
+	    }
+        $hide_wp = (bool) __get_cache('hide_wp', false);
+    	if(!$hide_wp){
+    		return;
+    	}
+    	$wp_admin_bar->remove_node('wp-logo');
+    }
+}
+
+if(!function_exists('__maybe_local_login_headertext')){
+    /**
+	 * This function MUST be called inside the 'login_headertext' filter hook.
+	 *
+     * @return string
+     */
+    function __maybe_local_login_headertext($login_header_text = ''){
+        if(!doing_filter('login_headertext')){ // Too early or too late.
+	        return $login_header_text;
+	    }
+    	$local_login_header = (bool) __get_cache('local_login_header', false);
+    	if(!$local_login_header){
+            return $login_header_text;
+    	}
+    	return get_option('blogname');
+    }
+}
+
+if(!function_exists('__maybe_local_login_headerurl')){
+    /**
+	 * This function MUST be called inside the 'login_headerurl' filter hook.
+	 *
+     * @return string
+     */
+    function __maybe_local_login_headerurl($login_header_url = ''){
+        if(!doing_filter('login_headerurl')){ // Too early or too late.
+	        return $login_header_url;
+	    }
+        $local_login_header = (bool) __get_cache('local_login_header', false);
+    	if(!$local_login_header){
+            return $login_header_url;
+    	}
+        return home_url();
+    }
+}
+
 if(!function_exists('__maybe_replace_login_logo')){
     /**
 	 * This function MUST be called inside the 'login_enqueue_scripts' action hook.
@@ -5541,56 +5243,72 @@ if(!function_exists('__maybe_replace_login_logo')){
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
-// Opis Closure
+// Nonces
 //
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-if(!function_exists('__serializable_closure')){
+if(!function_exists('__create_nonce_guest')){
 	/**
-	 * @return Opis\Closure\SerializableClosure|WP_Error
+	 * @return string
 	 */
-	function __serializable_closure($closure = null){
-		$lib = __use_serializable_closure();
-		if(is_wp_error($lib)){
-			return $lib;
-		}
-		return new \Opis\Closure\SerializableClosure($closure);
+	function __create_nonce_guest($action = -1){
+        $i = wp_nonce_tick($action);
+        $token = __get_session_token_guest();
+        $uid = 0;
+        return substr(wp_hash($i . '|' . $action . '|' . $uid . '|' . $token, 'nonce'), -12, 10);
 	}
 }
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//
-// These functions’ access is marked private. This means they are not intended for use by plugin or theme developers, only in other core functions.
-//
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-if(!function_exists('__use_serializable_closure')){
+if(!function_exists('__get_session_token_guest')){
 	/**
-	 * @return string|WP_Error
+	 * @return string
 	 */
-	function __use_serializable_closure($ver = '3.6.3'){
-		$key = 'serializable-closure-' . $ver;
-		if(__isset_cache($key)){
-			return (string) __get_cache($key, '');
-		}
-		$class = 'Opis\Closure\SerializableClosure';
-		if(class_exists($class)){
-			return ''; // Already handled outside of this function.
-		}
-		$dir = __remote_lib('https://github.com/opis/closure/archive/refs/tags/' . $ver . '.zip', 'closure-' . $ver);
-		if(is_wp_error($dir)){
-			return $dir;
-		}
-		$file = $dir . '/autoload.php';
-		if(!file_exists($file)){
-			return __error(translate('File doesn&#8217;t exist?'), $file);
-		}
-		require_once($file);
-		if(!class_exists($class)){
-			return __error(sprintf(translate('Missing parameter(s): %s'), $class) . '.');
-		}
-		__set_cache($key, $dir);
-		return $dir;
+	function __get_session_token_guest($action = -1){
+        return '';
+	}
+}
+
+if(!function_exists('__nonce_url')){
+	/**
+	 * @return string
+	 */
+	function __nonce_url($actionurl = '', $action = -1, $name = '_wpnonce'){
+        //$actionurl = str_replace('&amp;', '&', $actionurl);
+        return esc_html(add_query_arg($name, __create_nonce_guest($action), $actionurl));
+	}
+}
+
+if(!function_exists('__nonce_url_guest')){
+	/**
+	 * @return string
+	 */
+	function __nonce_url_guest($actionurl = '', $action = -1, $name = '_wpnonce'){
+        //$actionurl = str_replace('&amp;', '&', $actionurl);
+        return esc_html(add_query_arg($name, __create_nonce_guest($action), $actionurl));
+	}
+}
+
+if(!function_exists('__verify_nonce_guest')){
+	/**
+	 * @return bool
+	 */
+	function __verify_nonce_guest($nonce = '', $action = -1){
+        $nonce = (string) $nonce;
+    	if(empty($nonce)){
+    		return false;
+    	}
+        $i = wp_nonce_tick($action);
+        $token = __get_session_token_guest();
+    	$uid = 0;
+    	$expected = substr(wp_hash($i . '|' . $action . '|' . $uid . '|' . $token, 'nonce'), -12, 10);
+    	if(hash_equals($expected, $nonce)){
+    		return 1; // Nonce generated 0-12 hours ago
+    	}
+    	$expected = substr(wp_hash(($i - 1) . '|' . $action . '|' . $uid . '|' . $token, 'nonce'), -12, 10);
+    	if(hash_equals($expected, $nonce)){
+    		return 2; // Nonce generated 12-24 hours ago
+    	}
+    	return false; // Invalid nonce
 	}
 }
 
@@ -5715,291 +5433,6 @@ if(!function_exists('__use_xlsxwriter')){
 		__set_cache($key, $dir);
 		return $dir;
 	}
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//
-// Plugin cache
-//
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-if(!function_exists('__get_plugin_array_cache')){
-	/**
-	 * @return mixed
-	 */
-	function __get_plugin_array_cache($array_key = '', $key = '', $default = null){
-		$array = (array) __get_cache($array_key, []);
-		return isset($array[$key]) ? $array[$key] : $default;
-	}
-}
-
-if(!function_exists('__get_plugin_cache')){
-	/**
-	 * @return mixed
-	 */
-	function __get_plugin_cache($key = '', $default = null){
-		$group = __plugin_group();
-		$value = wp_cache_get($key, $group, false, $found);
-		if($found){
-			return $value;
-		}
-	    return $default;
-	}
-}
-
-if(!function_exists('__isset_plugin_array_cache')){
-	/**
-	 * @return bool
-	 */
-	function __isset_plugin_array_cache($array_key = '', $key = ''){
-		$array = (array) __get_cache($array_key, []);
-		return isset($array[$key]);
-	}
-}
-
-if(!function_exists('__isset_plugin_cache')){
-	/**
-	 * @return bool
-	 */
-	function __isset_plugin_cache($key = ''){
-		$group = __plugin_group();
-		$value = wp_cache_get($key, $group, false, $found);
-	    return $found;
-	}
-}
-
-if(!function_exists('__set_plugin_array_cache')){
-	/**
-	 * @return bool
-	 */
-	function __set_plugin_array_cache($array_key = '', $key = '', $data = null){
-		$array = (array) __get_cache($array_key, []);
-		$array[$key] = $data;
-		return __set_cache($array_key, $array);
-	}
-}
-
-if(!function_exists('__set_plugin_cache')){
-	/**
-	 * @return bool
-	 */
-	function __set_plugin_cache($key = '', $data = null){
-		$group = __plugin_group();
-		return wp_cache_set($key, $data, $group);
-	}
-}
-
-if(!function_exists('__unset_plugin_array_cache')){
-	/**
-	 * @return bool
-	 */
-	function __unset_plugin_array_cache($array_key = '', $key = ''){
-		$array = (array) __get_cache($array_key, []);
-		if(isset($array[$key])){
-			unset($array[$key]);
-		}
-		return __set_cache($array_key, $array);
-	}
-}
-
-if(!function_exists('__unset_plugin_cache')){
-	/**
-	 * @return bool
-	 */
-	function __unset_plugin_cache($key = ''){
-		$group = __plugin_group();
-		return wp_cache_delete($key, $group);
-	}
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//
-// These functions’ access is marked private. This means they are not intended for use by plugin or theme developers, only in other core functions.
-//
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-if(!function_exists('__plugin_group')){
-    /**
-     * @return string
-     */
-    function __plugin_group(){
-        $file = __caller_file(2); // Two levels above.
-        $group = __plugin_prefix('', $file);
-        return $group;
-    }
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//
-// Plugin hooks
-//
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-if(!function_exists('__add_plugin_action')){
-    /**
-     * @return string
-     */
-    function __add_plugin_action($hook_name = '', $callback = null, $priority = 10, $accepted_args = 1){
-        $hook_name = __plugin_hook_name($hook_name);
-        return __on($hook_name, $callback, $priority, $accepted_args);
-    }
-}
-
-if(!function_exists('__add_plugin_action_once')){
-    /**
-     * @return string
-     */
-    function __add_plugin_action_once($hook_name = '', $callback = null, $priority = 10, $accepted_args = 1){
-        $hook_name = __plugin_hook_name($hook_name);
-        return __one($hook_name, $callback, $priority, $accepted_args);
-    }
-}
-
-if(!function_exists('__add_plugin_filter')){
-    /**
-     * @return string
-     */
-    function __add_plugin_filter($hook_name = '', $callback = null, $priority = 10, $accepted_args = 1){
-        $hook_name = __plugin_hook_name($hook_name);
-        return __on($hook_name, $callback, $priority, $accepted_args);
-    }
-}
-
-if(!function_exists('__add_plugin_filter_once')){
-    /**
-     * @return string
-     */
-    function __add_plugin_filter_once($hook_name = '', $callback = null, $priority = 10, $accepted_args = 1){
-        $hook_name = __plugin_hook_name($hook_name);
-        return __one($hook_name, $callback, $priority, $accepted_args);
-    }
-}
-
-if(!function_exists('__apply_plugin_filters')){
-    /**
-     * @return mixed
-     */
-    function __apply_plugin_filters($hook_name = '', $value = null, ...$arg){
-        $hook_name = __plugin_hook_name($hook_name);
-        return apply_filters($hook_name, $value, ...$arg);
-    }
-}
-
-if(!function_exists('__did_plugin_action')){
-    /**
-     * @return bool
-     */
-    function __did_plugin_action($hook_name = ''){
-        $hook_name = __plugin_hook_name($hook_name);
-        return did_action($hook_name);
-    }
-}
-
-if(!function_exists('__did_plugin_filter')){
-    /**
-     * @return bool
-     */
-    function __did_plugin_filter($hook_name = ''){
-        $hook_name = __plugin_hook_name($hook_name);
-        return did_filter($hook_name);
-    }
-}
-
-if(!function_exists('__do_plugin_action')){
-    /**
-     * @return void
-     */
-    function __do_plugin_action($hook_name = '', ...$arg){
-        $hook_name = __plugin_hook_name($hook_name);
-        do_action($hook_name, ...$arg);
-    }
-}
-
-if(!function_exists('__do_plugin_action_ref_array')){
-    /**
-     * @return void
-     */
-    function __do_plugin_action_ref_array($hook_name = '', $args = []){
-        $hook_name = __plugin_hook_name($hook_name);
-        do_action_ref_array($hook_name, $args);
-    }
-}
-
-if(!function_exists('__doing_plugin_action')){
-    /**
-     * @return bool
-     */
-    function __doing_plugin_action($hook_name = ''){
-        $hook_name = __plugin_hook_name($hook_name);
-        return doing_filter($hook_name);
-    }
-}
-
-if(!function_exists('__doing_plugin_filter')){
-    /**
-     * @return bool
-     */
-    function __doing_plugin_filter($hook_name = ''){
-        $hook_name = __plugin_hook_name($hook_name);
-        return doing_filter($hook_name);
-    }
-}
-
-if(!function_exists('__has_plugin_action')){
-    /**
-     * @return bool
-     */
-    function __has_plugin_action($hook_name = '', $callback = false){
-        $hook_name = __plugin_hook_name($hook_name);
-        return has_filter($hook_name, $callback);
-    }
-}
-
-if(!function_exists('__has_plugin_filter')){
-    /**
-     * @return bool
-     */
-    function __has_plugin_filter($hook_name = '', $callback = false){
-        $hook_name = __plugin_hook_name($hook_name);
-        return has_filter($hook_name, $callback);
-    }
-}
-
-if(!function_exists('__remove_plugin_action')){
-    /**
-     * @return bool
-     */
-    function __remove_plugin_action($hook_name = '', $callback = null, $priority = 10){
-        $hook_name = __plugin_hook_name($hook_name);
-        return remove_filter($hook_name, $callback, $priority);
-    }
-}
-
-if(!function_exists('__remove_plugin_filter')){
-    /**
-     * @return bool
-     */
-    function __remove_plugin_filter($hook_name = '', $callback = null, $priority = 10){
-        $hook_name = __plugin_hook_name($hook_name);
-        return remove_filter($hook_name, $callback, $priority);
-    }
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//
-// These functions’ access is marked private. This means they are not intended for use by plugin or theme developers, only in other core functions.
-//
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-if(!function_exists('__plugin_hook_name')){
-    /**
-     * @return string
-     */
-    function __plugin_hook_name($hook_name = ''){
-        $file = __caller_file(2); // Two levels above.
-        $hook_name = __plugin_prefix($hook_name, $file);
-        return $hook_name;
-    }
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -6445,25 +5878,14 @@ if(!function_exists('__plugin_update_checker')){
         if(is_wp_error($plugin_file)){
             return $plugin_file;
         }
-        $plugin_slug = __plugin_slug('', $plugin_file);
-        $plugin_uri = __plugin_meta('PluginURI', $plugin_file);
         $update_uri = __plugin_meta('UpdateURI', $plugin_file);
         if(is_wp_error($update_uri)){
-            if(is_wp_error($plugin_uri)){
-                return __error(translate('A valid URL was not provided.'));
-            }
-            $host_url = __host_url($update_uri);
-            if(!$host_url){
-                return __error(translate('Invalid URL Provided.'));
-            }
-            $update_uri = add_query_arg([
-                'action' => 'get_metadata',
-                'slug' => $plugin_slug,
-            ], path_join($host_url, 'wp-update-server'));
+            return __error(translate('A valid URL was not provided.'));
         }
         if(!wp_http_validate_url($update_uri)){
             return __error(translate('Invalid URL.'));
         }
+        $plugin_slug = __plugin_slug('', $plugin_file);
         $update_checker = __build_update_checker($update_uri, $plugin_file, $plugin_slug);
         if(is_wp_error($update_checker)){
             return $update_checker;
@@ -6480,9 +5902,312 @@ if(!function_exists('__plugin_update_checker')){
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
+// Plugins cache
+//
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+if(!function_exists('__get_plugin_array_cache')){
+	/**
+	 * @return mixed
+	 */
+	function __get_plugin_array_cache($array_key = '', $key = '', $default = null){
+		$array = (array) __get_cache($array_key, []);
+		return isset($array[$key]) ? $array[$key] : $default;
+	}
+}
+
+if(!function_exists('__get_plugin_cache')){
+	/**
+	 * @return mixed
+	 */
+	function __get_plugin_cache($key = '', $default = null){
+		$group = __plugin_group();
+		$value = wp_cache_get($key, $group, false, $found);
+		if($found){
+			return $value;
+		}
+	    return $default;
+	}
+}
+
+if(!function_exists('__isset_plugin_array_cache')){
+	/**
+	 * @return bool
+	 */
+	function __isset_plugin_array_cache($array_key = '', $key = ''){
+		$array = (array) __get_cache($array_key, []);
+		return isset($array[$key]);
+	}
+}
+
+if(!function_exists('__isset_plugin_cache')){
+	/**
+	 * @return bool
+	 */
+	function __isset_plugin_cache($key = ''){
+		$group = __plugin_group();
+		$value = wp_cache_get($key, $group, false, $found);
+	    return $found;
+	}
+}
+
+if(!function_exists('__set_plugin_array_cache')){
+	/**
+	 * @return bool
+	 */
+	function __set_plugin_array_cache($array_key = '', $key = '', $data = null){
+		$array = (array) __get_cache($array_key, []);
+		$array[$key] = $data;
+		return __set_cache($array_key, $array);
+	}
+}
+
+if(!function_exists('__set_plugin_cache')){
+	/**
+	 * @return bool
+	 */
+	function __set_plugin_cache($key = '', $data = null){
+		$group = __plugin_group();
+		return wp_cache_set($key, $data, $group);
+	}
+}
+
+if(!function_exists('__unset_plugin_array_cache')){
+	/**
+	 * @return bool
+	 */
+	function __unset_plugin_array_cache($array_key = '', $key = ''){
+		$array = (array) __get_cache($array_key, []);
+		if(isset($array[$key])){
+			unset($array[$key]);
+		}
+		return __set_cache($array_key, $array);
+	}
+}
+
+if(!function_exists('__unset_plugin_cache')){
+	/**
+	 * @return bool
+	 */
+	function __unset_plugin_cache($key = ''){
+		$group = __plugin_group();
+		return wp_cache_delete($key, $group);
+	}
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// These functions’ access is marked private. This means they are not intended for use by plugin or theme developers, only in other core functions.
+//
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+if(!function_exists('__plugin_group')){
+    /**
+     * @return string
+     */
+    function __plugin_group(){
+        $file = __caller_file(2); // Two levels above.
+        $group = __plugin_prefix('', $file);
+        return $group;
+    }
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// Plugins hooks
+//
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+if(!function_exists('__add_plugin_action')){
+    /**
+     * @return string
+     */
+    function __add_plugin_action($hook_name = '', $callback = null, $priority = 10, $accepted_args = 1){
+        $hook_name = __plugin_hook_name($hook_name);
+        return __on($hook_name, $callback, $priority, $accepted_args);
+    }
+}
+
+if(!function_exists('__add_plugin_action_once')){
+    /**
+     * @return string
+     */
+    function __add_plugin_action_once($hook_name = '', $callback = null, $priority = 10, $accepted_args = 1){
+        $hook_name = __plugin_hook_name($hook_name);
+        return __one($hook_name, $callback, $priority, $accepted_args);
+    }
+}
+
+if(!function_exists('__add_plugin_filter')){
+    /**
+     * @return string
+     */
+    function __add_plugin_filter($hook_name = '', $callback = null, $priority = 10, $accepted_args = 1){
+        $hook_name = __plugin_hook_name($hook_name);
+        return __on($hook_name, $callback, $priority, $accepted_args);
+    }
+}
+
+if(!function_exists('__add_plugin_filter_once')){
+    /**
+     * @return string
+     */
+    function __add_plugin_filter_once($hook_name = '', $callback = null, $priority = 10, $accepted_args = 1){
+        $hook_name = __plugin_hook_name($hook_name);
+        return __one($hook_name, $callback, $priority, $accepted_args);
+    }
+}
+
+if(!function_exists('__apply_plugin_filters')){
+    /**
+     * @return mixed
+     */
+    function __apply_plugin_filters($hook_name = '', $value = null, ...$arg){
+        $hook_name = __plugin_hook_name($hook_name);
+        return apply_filters($hook_name, $value, ...$arg);
+    }
+}
+
+if(!function_exists('__did_plugin_action')){
+    /**
+     * @return bool
+     */
+    function __did_plugin_action($hook_name = ''){
+        $hook_name = __plugin_hook_name($hook_name);
+        return did_action($hook_name);
+    }
+}
+
+if(!function_exists('__did_plugin_filter')){
+    /**
+     * @return bool
+     */
+    function __did_plugin_filter($hook_name = ''){
+        $hook_name = __plugin_hook_name($hook_name);
+        return did_filter($hook_name);
+    }
+}
+
+if(!function_exists('__do_plugin_action')){
+    /**
+     * @return void
+     */
+    function __do_plugin_action($hook_name = '', ...$arg){
+        $hook_name = __plugin_hook_name($hook_name);
+        do_action($hook_name, ...$arg);
+    }
+}
+
+if(!function_exists('__do_plugin_action_ref_array')){
+    /**
+     * @return void
+     */
+    function __do_plugin_action_ref_array($hook_name = '', $args = []){
+        $hook_name = __plugin_hook_name($hook_name);
+        do_action_ref_array($hook_name, $args);
+    }
+}
+
+if(!function_exists('__doing_plugin_action')){
+    /**
+     * @return bool
+     */
+    function __doing_plugin_action($hook_name = ''){
+        $hook_name = __plugin_hook_name($hook_name);
+        return doing_filter($hook_name);
+    }
+}
+
+if(!function_exists('__doing_plugin_filter')){
+    /**
+     * @return bool
+     */
+    function __doing_plugin_filter($hook_name = ''){
+        $hook_name = __plugin_hook_name($hook_name);
+        return doing_filter($hook_name);
+    }
+}
+
+if(!function_exists('__has_plugin_action')){
+    /**
+     * @return bool
+     */
+    function __has_plugin_action($hook_name = '', $callback = false){
+        $hook_name = __plugin_hook_name($hook_name);
+        return has_filter($hook_name, $callback);
+    }
+}
+
+if(!function_exists('__has_plugin_filter')){
+    /**
+     * @return bool
+     */
+    function __has_plugin_filter($hook_name = '', $callback = false){
+        $hook_name = __plugin_hook_name($hook_name);
+        return has_filter($hook_name, $callback);
+    }
+}
+
+if(!function_exists('__remove_plugin_action')){
+    /**
+     * @return bool
+     */
+    function __remove_plugin_action($hook_name = '', $callback = null, $priority = 10){
+        $hook_name = __plugin_hook_name($hook_name);
+        return remove_filter($hook_name, $callback, $priority);
+    }
+}
+
+if(!function_exists('__remove_plugin_filter')){
+    /**
+     * @return bool
+     */
+    function __remove_plugin_filter($hook_name = '', $callback = null, $priority = 10){
+        $hook_name = __plugin_hook_name($hook_name);
+        return remove_filter($hook_name, $callback, $priority);
+    }
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// These functions’ access is marked private. This means they are not intended for use by plugin or theme developers, only in other core functions.
+//
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+if(!function_exists('__plugin_hook_name')){
+    /**
+     * @return string
+     */
+    function __plugin_hook_name($hook_name = ''){
+        $file = __caller_file(2); // Two levels above.
+        $hook_name = __plugin_prefix($hook_name, $file);
+        return $hook_name;
+    }
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
 // Queries
 //
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+if(!function_exists('__get_post')){
+	/**
+	 * @return null|WP_Post
+	 */
+	function __get_post($post = null, $output = OBJECT, $filter = 'raw'){
+        if(!is_array($post)){
+            return get_post($post, $output, $filter);
+        }
+        $post['fields'] = 'all';
+        $post['posts_per_page'] = 1;
+        $posts = get_posts($post);
+        if(!$posts){
+            return null;
+        }
+        return get_post($posts[0], $output, $filter);
+    }
+}
 
 if(!function_exists('__get_posts_query')){
 	/**
@@ -6524,6 +6249,42 @@ if(!function_exists('__get_posts_query')){
 		$query->query($parsed_args);
 		return $query;
 	}
+}
+
+if(!function_exists('__get_the_id')){
+	/**
+	 * @return int
+	 */
+    function __get_the_id(){
+        if(!did_action('parse_query')){
+            return __get_the_id_early();
+        }
+        if(in_the_loop()){
+            return get_the_ID();
+        }
+        return get_queried_object_id();
+    }
+}
+
+if(!function_exists('__get_the_id_early')){
+	/**
+	 * @return int
+	 */
+    function __get_the_id_early(){
+        if(!__is_front()){
+            return 0;
+        }
+        if(!isset($_SERVER['HTTP_HOST'])){
+            return 0;
+        }
+        // Build the URL in the address bar.
+        $requested_url = (is_ssl() ? 'https://' : 'http://');
+        $requested_url .= $_SERVER['HTTP_HOST'];
+        if(isset($_SERVER['REQUEST_URI'])){
+            $requested_url .= $_SERVER['REQUEST_URI'];
+        }
+        return url_to_postid($requested_url);
+    }
 }
 
 if(!function_exists('__get_user')){
@@ -6575,45 +6336,65 @@ if(!function_exists('__get_users_query')){
 //
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-if(!function_exists('__download_url')){
+if(!function_exists('__download_tmp')){
 	/**
 	 * Alias for download_url.
 	 *
 	 * @return string|WP_Error
 	 */
-	function __download_url($url = '', $args = []){
-		if(!$url){
-            $error_msg = translate('Invalid URL Provided.');
-			return __error($error_msg);
-		}
-        $args = wp_parse_args($args, [
-            'filename' => '',
-            'timeout' => 300,
-        ]);
-        $args = __sanitize_remote_args($args, $url);
-        $filename = $args['filename'];
-        if($filename){
-            $filename = __check_upload_dir($filename);
-            if(is_wp_error($filename)){
-                return $filename;
-            }
-        } else {
-            $download_dir = __download_dir();
-            if(is_wp_error($download_dir)){
-                return $download_dir;
-            }
-            $url_filename = __basename($url);
-            $unique_filename = wp_unique_filename($download_dir, $url_filename);
-            $filename = path_join($download_dir, $unique_filename);
-            $args['filename'] = $filename;
+	function __download_tmp($url = '', $timeout = 300, $signature_verification = false){
+		$filename = download_url($url, $timeout, $signature_verification);
+        if(is_wp_error($filename)){
+            return $filename;
         }
-		$args['stream'] = true;
-        $response = __remote_get($url, $args);
-        if(!$response->is_success){
+        if('tmp' !== pathinfo($filename, PATHINFO_EXTENSION)){
+            return $filename;
+        }
+        $url_filename = __basename($url);
+        $check = wp_check_filetype($url_filename);
+        if(empty($check['ext'])){
+            return $filename;
+        }
+        $new_filename = dirname($filename) . '/' . $url_filename;
+        if(rename($filename, $new_filename)){
+            $filename = $new_filename;
+        }
+        if($filename !== $new_filename and file_exists($new_filename)){
+            @unlink($new_filename);
+        }
+        return $filename;
+	}
+}
+
+if(!function_exists('__download_url')){
+	/**
+	 * @return string|WP_Error
+	 */
+	function __download_url($url = '', $timeout = 300, $signature_verification = false){
+		$filename = __download_tmp($url, $timeout, $signature_verification);
+        if(is_wp_error($filename)){
+            return $filename;
+        }
+        $download_dir = __download_dir();
+        if(is_wp_error($download_dir)){
+            return $download_dir;
+        }
+        $basename = wp_basename($filename);
+        $unique_filename = wp_unique_filename($download_dir, $basename);
+        $new_filename = $download_dir . '/' . $unique_filename;
+        if(rename($filename, $new_filename)){
+            $filename = $new_filename;
+        }
+        if($filename !== $new_filename and file_exists($new_filename)){
+            @unlink($new_filename);
+        }
+        $check = wp_check_filetype($filename);
+        if(empty($check['ext'])){
             @unlink($filename);
-			return $response->wp_error;
+            $error_msg = translate('Sorry, you are not allowed to upload this file type.');
+		    return __error($error_msg);
         }
-		return $filename;
+        return $filename;
 	}
 }
 
@@ -6646,25 +6427,6 @@ if(!function_exists('__get_content_type')){
 	}
 }
 
-if(!function_exists('__get_file_sample')){
-	/**
-	 * @return string
-	 */
-	function __get_file_sample($tmpfname = ''){
-		if(!is_file($tmpfname)){
-			return '';
-		}
-		$tmpf = fopen($tmpfname, 'rb'); // Retrieve a sample of the response body for debugging purposes.
-		if(!$tmpf){
-			return '';
-		}
-		$response_size = apply_filters('download_url_error_max_body_size', KB_IN_BYTES); // Filters the maximum error response body size. Default 1 KB.
-		$sample = fread($tmpf, $response_size);
-		fclose($tmpf);
-		return $sample;
-	}
-}
-
 if(!function_exists('__get_response_message')){
 	/**
 	 * @return string
@@ -6692,11 +6454,9 @@ if(!function_exists('__get_status_message')){
 			return $message;
 		}
         if(__is_success($code)){
-            $message = 'Success';
-        } else {
-            $message = 'Error';
+            return sprintf(translate('SUCCESS: %s'), $code);
         }
-		return $message;
+        return sprintf(translate('FAILED: %s'), $code);
 	}
 }
 
@@ -6792,46 +6552,12 @@ if(!function_exists('__is_wp_http_requests_response')){
 	 */
 	function __is_wp_http_requests_response($response = []){
 		if(!__array_keys_exists(['body', 'cookies', 'filename', 'headers', 'http_response', 'response'], $response)){
-			return false;
+			return false; // https://developer.wordpress.org/reference/classes/wp_http/request/#return
 		}
 		if(!$response['http_response'] instanceof \WP_HTTP_Requests_Response){
-			return false;
+			return false; // https://developer.wordpress.org/reference/classes/wp_http_requests_response/
 		}
 	    return true;
-	}
-}
-
-if(!function_exists('__json_decode')){
-	/**
-	 * Alias for json_decode.
-	 *
-	 * Differs from json_decode in that it will return a WP_Error on failure.
-	 *
-	 * Retrieves the parameters from a JSON-formatted body.
-	 *
-	 * @return array|stdClass|WP_Error
-	 */
-	function __json_decode($json = '', $associative = null, $depth = 512, $flags = 0){
-		$json = trim($json);
-		if($associative or ($flags & JSON_OBJECT_AS_ARRAY)){
-			$empty = [];
-		} else {
-			$empty = new \stdClass;
-		}
-		if(empty($json)){
-			return $empty;
-		}
-		$params = json_decode($json, $associative, $depth, $flags); // Parses the JSON parameters.
-		if(is_null($params) and JSON_ERROR_NONE !== json_last_error()){ // Check for a parsing error.
-			$error_data = [
-				'json_error_code' => json_last_error(),
-				'json_error_message' => json_last_error_msg(),
-				'status' => \WP_Http::BAD_REQUEST,
-			];
-            $error_msg = translate('Invalid JSON body passed.');
-			return __error($error_msg, $error_data);
-		}
-		return $params;
 	}
 }
 
@@ -6954,8 +6680,7 @@ if(!function_exists('__remote_lib')){
 	        __set_cache($key, $expected_dir);
 			return $expected_dir; // Already exists.
 		}
-		//$file = __download_url($url, $download_dir);
-        $file = __download_url($url); // TODO: send filename.
+        $file = __download_url($url);
 		if(is_wp_error($file)){
 			return $file;
 		}
@@ -7257,6 +6982,26 @@ if(!function_exists('__maybe_add_external_rules_notice')){
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
+// Roles and Capabilities
+//
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+if(!function_exists('__clone_role')){
+	/**
+	 * @return void|WP_Role
+	 */
+	function __clone_role($source = '', $destination = '', $display_name = ''){
+		$role = get_role($source);
+		if(is_null($role)){
+			return;
+		}
+		$destination = __canonicalize($destination);
+		return add_role($destination, $display_name, $role->capabilities);
+	}
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
 // Strings
 //
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -7299,6 +7044,18 @@ if(!function_exists('__first_p')){
 	}
 }
 
+if(!function_exists('__implode')){
+	/**
+	 * @return string
+	 */
+	function __implode($array = [], $separator = ''){
+        if(!$separator){
+            $separator = wp_get_list_item_separator();
+        }
+		return implode($separator, $array);
+	}
+}
+
 if(!function_exists('__implode_and')){
 	/**
 	 * @return string
@@ -7325,12 +7082,13 @@ if(!function_exists('__implode_comma')){
         if(1 === count($array)){
 			return $array[0];
 		}
+        $comma = wp_get_list_item_separator();
         $separator = trim($separator);
         if(!$separator){
-            return implode(', ', $array);
+            return implode($comma, $array);
         }
 		$last = array_pop($array);
-		return implode(', ', $array) . ' ' . $separator . ' ' . $last;
+		return implode($comma, $array) . ' ' . $separator . ' ' . $last;
 	}
 }
 
@@ -7418,7 +7176,7 @@ if(!function_exists('__remove_whitespaces')){
 	 * @return string
 	 */
 	function __remove_whitespaces($str = ''){
-		return trim(preg_replace('/[\r\n\t ]+/', ' ', $str));
+		return trim(preg_replace('/[\r\n\t\s]+/', ' ', $str));
 	}
 }
 
@@ -7682,7 +7440,43 @@ if(!function_exists('__use_tgm_plugin_activation')){
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
-// Urchin Tracking Module
+// Themes
+//
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+if(!function_exists('__theme_is')){
+    /**
+     * @return bool
+     */
+    function __theme_is($name = ''){
+		if(__isset_array_cache('theme_is', $name)){
+			return (bool) __get_array_cache('theme_is', $name, false);
+		}
+    	$current_theme = wp_get_theme();
+		$theme_is = ($name === $current_theme->get('Name'));
+		__set_array_cache('theme_is', $name, $theme_is);
+    	return $theme_is;
+    }
+}
+
+if(!function_exists('__theme_is_child_of')){
+    /**
+     * @return bool
+     */
+    function __theme_is_child_of($template = ''){
+		if(__isset_array_cache('theme_is_child_of', $template)){
+			return (bool) __get_array_cache('theme_is_child_of', $template, false);
+		}
+		$current_theme = wp_get_theme();
+		$theme_is_child_of = ($template === $current_theme->get('Template'));
+		__set_array_cache('theme_is_child_of', $template, $theme_is_child_of);
+    	return $theme_is_child_of;
+    }
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// Urchin Tracking Module Parameters
 //
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -7711,23 +7505,6 @@ if(!function_exists('__current_utm_params')){
     }
 }
 
-if(!function_exists('__track_utm_parameters')){
-    /**
-     * @return void
-     */
-    function __track_utm_parameters(){
-        __set_cache('track_utm_parameters', true);
-		if(doing_action('after_setup_theme')){ // Just in time.
-			__maybe_set_utm_cookie();
-			return;
-		}
-		if(did_action('after_setup_theme')){ // Too late.
-			return;
-		}
-		__add_action_once('after_setup_theme', '__maybe_set_utm_cookie');
-    }
-}
-
 if(!function_exists('__utm_param_name')){
     /**
      * @return string
@@ -7738,6 +7515,23 @@ if(!function_exists('__utm_param_name')){
             return '';
         }
         return $pairs[$name];
+    }
+}
+
+if(!function_exists('__utm_parameters')){
+    /**
+     * @return void
+     */
+    function __utm_parameters(){
+        __set_cache('utm_parameters', true);
+		if(doing_action('after_setup_theme')){ // Just in time.
+			__maybe_set_utm_cookie();
+			return;
+		}
+		if(did_action('after_setup_theme')){ // Too late.
+			return;
+		}
+		__add_action_once('after_setup_theme', '__maybe_set_utm_cookie');
     }
 }
 
@@ -7775,8 +7569,8 @@ if(!function_exists('__maybe_set_utm_cookie')){
 		if(!doing_action('after_setup_theme')){ // Too early or too late.
 	        return;
 	    }
-        $track_utm_parameters = (bool) __get_cache('track_utm_parameters', false);
-        if(!$track_utm_parameters){
+        $utm_parameters = (bool) __get_cache('utm_parameters', false);
+        if(!$utm_parameters){
             return;
         }
         if(!__at_least_one_utm_get_param()){
@@ -7889,11 +7683,15 @@ if(!function_exists('__wf_bulk_countries')){
         if(__isset_cache('wf_bulk_countries')){
             return (array) __get_cache('wf_bulk_countries', []);
         }
-        if(!__is_plugin_active('wordfence/wordfence.php')){
-            __set_cache('wf_bulk_countries', []);
+
+        if(!defined('WORDFENCE_PATH')){
             return [];
         }
-        require(WORDFENCE_PATH . 'lib/wfBulkCountries.php'); /** @var array $wfBulkCountries */
+        $file = WORDFENCE_PATH . 'lib/wfBulkCountries.php';
+        if(!file_exists($file)){
+            return [];
+        }
+        include $file; /** @var array $wfBulkCountries */
         asort($wfBulkCountries);
         __set_cache('wf_bulk_countries', $wfBulkCountries);
         return $wfBulkCountries;
@@ -7906,6 +7704,9 @@ if(!function_exists('__wf_countries')){
      */
     function __wf_countries($preferred_countries = []){
         $wf_countries = __wf_bulk_countries();
+        if(!$wf_countries){
+            return $wf_countries;
+        }
         if(!$preferred_countries){
             return $wf_countries;
         }
@@ -7954,10 +7755,13 @@ if(!function_exists('__zoom_access_token')){
             'timeout' => 10,
         ];
         $response = __remote_post($url, $args);
-        if(!$response->is_success){
-            return $response->wp_error;
+        if(!$response->is_success()){
+            return $response->wp_error();
         }
-        $access_token = $response->json_params['access_token'];
+        $access_token = $response->json_param('access_token');
+        if(!$access_token){
+            return __error();
+        }
         __set_cache('zoom_access_token', $access_token);
         return $access_token;
     }
@@ -8026,6 +7830,7 @@ if(!function_exists('__zoom_oauth_token')){
             return $oauth_token;
         }
         $expiration = 59 * MINUTE_IN_SECONDS; // The token’s time to live is 1 hour. https://developers.zoom.us/docs/internal-apps/s2s-oauth/
+        $expiration = $expiration - 10;
         set_transient($transient, $oauth_token, $expiration);
         return $oauth_token;
     }
@@ -8104,276 +7909,516 @@ if(!function_exists('__zoom_request')){
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
-// GitHub
+// These classes’ access is marked private. This means they are not intended for use by plugin or theme developers, only in other core functions.
+//
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// Response
 //
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-if(!function_exists('__github_api_token')){
-    /**
-     * @return void
-     */
-    function __github_api_token($token = ''){
-        if(!$token){
-            return;
-        }
-		__set_cache('github_api_token', $token);
-		__add_filter_once('http_request_args', '__maybe_add_github_api_token', 10, 2);
-    }
-}
+if(!class_exists('__Response')){ // Hardcoded.
+	final class __Response { // Hardcoded.
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//
-// These functions’ access is marked private. This means they are not intended for use by plugin or theme developers, only in other core functions.
-//
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		private $body = '', $code = 0, $cookies = [], $filename = '', $headers = [], $json = false, $json_params = [], $message = '', $response = [], $status = '', $success = false, $wp_error = null;
 
-if(!function_exists('__maybe_add_github_api_token')){
-	/**
-	 * This function MUST be called inside the 'http_request_args' filter hook.
-	 *
-	 * @return array
-	 */
-	function __maybe_add_github_api_token($parsed_args, $url){
-		if(!doing_filter('http_request_args')){
-	        return $parsed_args;
-	    }
-		$token = (string) __get_cache('github_api_token', '');
-		if(!$token){
-            return $parsed_args;
-        }
-        if(0 !== strpos($url, 'https://api.github.com/')){
-            return $parsed_args;
-        }
-        if(!isset($parsed_args['headers'])){
-            $parsed_args['headers'] = [];
-        }
-        $parsed_args['headers']['Authorization'] = 'token ' . $token;
-		return $parsed_args;
-	}
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//
-// Meta Box
-//
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-if(!function_exists('__mb_image_switch')){
-	/**
-	 * @return array|WP_Error
-	 */
-	function __mb_image_switch($id = '', $args = []){
-        if(!$id){
-            $error_msg = translate('The "%s" argument must be a non-empty string.');
-            $error_msg = sprintf($error_msg, 'id');
-            return __error($error_msg);
-        }
-        $defaults = [
-            'columns' => 4,
-            'icon' => 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyBpZD0iTGF5ZXJfMSIgZGF0YS1uYW1lPSJMYXllciAxIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj4KICA8cGF0aCBkPSJNNTEyLDMwMS4xOGgtNjUuNjZjLTUuMTIsMjEuMDgtMTMuMjUsNDAuNjYtMjQuNCw1OC4xM2w0Ni4zOCw0Ni4zOC02My4yNSw2My4yNS00Ni4zOC00Ni4zOGMtMTcuNDcsMTAuODQtMzcuMDQsMTguOTctNTcuNTIsMjMuNzl2NjUuNjZoLTkwLjM1di02NS42NmMtMjAuNDgtNC44Mi00MC4wNi0xMi45NS01Ny41Mi0yMy43OWwtNDYuMzgsNDYuMzgtNjMuODUtNjMuODUsNDYuMzgtNDYuMzhjLTEwLjg0LTE3LjQ3LTE4Ljk3LTM3LjA0LTIzLjc5LTU3LjUySDB2LTg5LjQ1aDY1LjM2YzQuODItMjEuMDgsMTMuMjUtNDAuNjYsMjQuMDktNTguNDNsLTQ2LjM4LTQ2LjM4LDYzLjI1LTYzLjI1LDQ2LjM4LDQ2LjM4YzE3LjQ3LTExLjE0LDM3LjM1LTE5LjI4LDU4LjEzLTI0LjRWMGg5MC4zNXY2NS42NmMyMC40OCw0LjgyLDQwLjA2LDEyLjk1LDU3LjUyLDIzLjc5bDQ2LjM4LTQ2LjM4LDYzLjg1LDYzLjg1LTQ2LjM4LDQ2LjM4YzEwLjg0LDE3Ljc3LDE5LjI4LDM3LjM1LDI0LjA5LDU4LjQzaDY1LjM2djg5LjQ1Wk0yNTYsMzQ2LjM1YzUwLDAsOTAuMzUtNDAuMzYsOTAuMzUtOTAuMzVzLTQwLjM2LTkwLjM1LTkwLjM1LTkwLjM1LTkwLjM1LDQwLjM2LTkwLjM1LDkwLjM1LDQwLjM2LDkwLjM1LDkwLjM1LDkwLjM1WiIvPgo8L3N2Zz4=',
-            'name' => '',
-        ];
-        $args = wp_parse_args($args, $defaults);
-        if(!$args['name']){
-            $args['name'] = $id;
-        }
-        $field = [
-            'after' => '</div></div></div>',
-            'before' => '<div style="padding: 6px; margin: 6px 0 0;"><div style="background-color: #f8f9fa; border: 1px solid rgba(0, 0, 0, 0.125); border-radius: 0.25rem; padding: 20px 20px 8px;"><div style="text-align: center;"><img src="' . $args['icon'] . '" style="max-height: 40px;"></div><div style="text-align: center;"><p>' . $args['name'] . '</p></div><div style="text-align: center;">',
-            'columns' => $args['columns'],
-            'id' => $id,
-            'on_label' => translate('Yes'),
-            'off_label' => translate('No'),
-            'style' => 'square',
-            'type' => 'switch',
-        ];
-        return $field;
-    }
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//
-// Nonces
-//
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-if(!function_exists('__create_nonce_guest')){
-	/**
-	 * @return string
-	 */
-	function __create_nonce_guest($action = -1){
-        $i = wp_nonce_tick($action);
-        $token = __get_session_token_guest();
-        $uid = 0;
-        return substr(wp_hash($i . '|' . $action . '|' . $uid . '|' . $token, 'nonce'), -12, 10);
-	}
-}
-
-if(!function_exists('__get_session_token_guest')){
-	/**
-	 * @return string
-	 */
-	function __get_session_token_guest($action = -1){
-        return '';
-	}
-}
-
-if(!function_exists('__nonce_url_guest')){
-	/**
-	 * @return string
-	 */
-	function __nonce_url_guest($actionurl = '', $action = -1, $name = '_wpnonce'){
-        $actionurl = str_replace('&amp;', '&', $actionurl);
-        return esc_html(add_query_arg($name, __create_nonce_guest($action), $actionurl));
-	}
-}
-
-if(!function_exists('__verify_nonce_guest')){
-	/**
-	 * @return bool
-	 */
-	function __verify_nonce_guest($nonce = '', $action = -1){
-        $nonce = (string) $nonce;
-    	if(empty($nonce)){
-    		return false;
-    	}
-        $i = wp_nonce_tick($action);
-        $token = __get_session_token_guest();
-    	$uid = 0;
-    	$expected = substr(wp_hash($i . '|' . $action . '|' . $uid . '|' . $token, 'nonce'), -12, 10);
-    	if(hash_equals($expected, $nonce)){
-    		return 1; // Nonce generated 0-12 hours ago
-    	}
-    	$expected = substr(wp_hash(($i - 1) . '|' . $action . '|' . $uid . '|' . $token, 'nonce'), -12, 10);
-    	if(hash_equals($expected, $nonce)){
-    		return 2; // Nonce generated 12-24 hours ago
-    	}
-    	return false; // Invalid nonce
-	}
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//
-// Miscellaneous
-//
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-if(!function_exists('__bb_avoid_full_size_images')){
-	/**
-	 * @return void
-	 */
-    function __bb_avoid_full_size_images(){
-        __add_filter_once('fl_builder_photo_sizes_select', '__maybe_bb_avoid_full_size_images', 11);
-    }
-}
-
-if(!function_exists('__exec')){
-    /**
-     * @return array|WP_Error
-     */
-    function __exec($command = ''){
-        $output = [];
-		if(!function_exists('exec')){
-			$error_msg = translate('Function %s used incorrectly in PHP.');
-			$error_msg = sprintf($error_msg, 'exec');
-			return __error($error_msg);
+		/**
+		 * @return void
+		 */
+	    public function __construct($response = []){
+            if(__is_wp_http_requests_response($response)){
+                $array = $response['response']->to_array();
+                $this->body = trim($array['body']);
+                $this->code = absint($array['response']['code']);
+                $this->cookies = $array['cookies'];
+                $this->filename = $array['filename'];
+                $this->headers = $array['headers'];
+                $this->json = __is_json_content_type($response);
+                $this->message = trim($array['response']['message']);
+                $this->response = $response;
+                $this->status = __get_status_message($response);
+                if(!$this->message){
+                    $this->message = $this->status;
+                }
+                $this->success = __is_success($this->code);
+                if($this->success){
+                    $this->wp_error = new \WP_Error;
+                } else {
+                    $this->wp_error = __error($this->message, $this->response);
+                }
+                if($this->json){
+                    $json_params = __json_decode($this->body, true);
+                    if(is_wp_error($json_params)){
+                        if($this->success){
+                            $this->success = false;
+                            $this->message = $json_params->get_error_message();
+                            $this->wp_error = $json_params;
+                        } else {
+                            $this->message = $json_params->get_error_message();
+                            $this->wp_error->merge_from($json_params);
+                        }
+                    } else {
+                        $this->json_params = $json_params;
+                        $maybe_error = __seems_error($json_params);
+                        if(is_wp_error($maybe_error)){
+                            if($this->success){
+                                $this->success = false;
+                                $this->message = $maybe_error->get_error_message();
+                                $this->wp_error = $maybe_error;
+                            } else {
+                                $this->message = $maybe_error->get_error_message();
+                                $this->wp_error->merge_from($maybe_error);
+                            }
+                        }
+                    }
+                }
+            } else {
+                $error_msg = translate('Invalid data provided.');
+                $this->message = $error_msg;
+                $this->response = $response;
+                $this->wp_error = __error($error_msg, $response);
+            }
 		}
-        try {
-            $result = exec($command, $output);
-        } catch(\Throwable $t){
-            $result = __error($t->getMessage());
-        } catch(\Exception $e){
-            $result = __error($e->getMessage());
-        }
-        if(is_wp_error($result)){
-            return $result;
-        }
-        return $output;
-    }
-}
 
-if(!function_exists('__get_the_id')){
-	/**
-	 * @return int
-	 */
-    function __get_the_id(){
-        if(in_the_loop()){
-            return get_the_ID();
-        }
-        return __get_the_id_early();
-    }
-}
+		/**
+		 * @return string
+		 */
+	    public function get_body(){
+			return $this->body;
+		}
 
-if(!function_exists('__get_the_id_early')){
-	/**
-	 * @return int
-	 */
-    function __get_the_id_early(){
-        if(!__is_front()){
-            return 0;
-        }
-        if(!isset($_SERVER['HTTP_HOST'])){
-            return 0;
-        }
-        // Build the URL in the address bar.
-        $requested_url = (is_ssl() ? 'https://' : 'http://');
-        $requested_url .= $_SERVER['HTTP_HOST'];
-        if(isset($_SERVER['REQUEST_URI'])){
-            $requested_url .= $_SERVER['REQUEST_URI'];
-        }
-        return url_to_postid($requested_url);
-    }
-}
+		/**
+		 * @return int
+		 */
+	    public function get_code(){
+			return $this->code;
+		}
 
-if(!function_exists('__is_front')){
-	/**
-	 * @return bool
-	 */
-    function __is_front(){
-        global $wp_query;
-        if(is_admin()){
-            return false; // The current request is for an administrative interface page.
-        }
-        if(wp_doing_ajax()){
-            return false; // The current request is a WordPress Ajax request.
-        }
-        if(wp_is_serving_rest_request()){
-            return false; // WordPress is currently serving a REST API request.
-        }
-        if(wp_is_json_request()){
-            return false; // The current request is a JSON request, or is expecting a JSON response.
-        }
-        if(wp_is_jsonp_request()){
-            return false; // The current request is a JSONP request, or is expecting a JSONP response.
-        }
-        if(defined('XMLRPC_REQUEST') and XMLRPC_REQUEST){
-            return false; // The current request is a WordPress XML-RPC request.
-        }
-        if(wp_is_xml_request() or isset($wp_query) and (function_exists('is_feed') and is_feed() or function_exists('is_comment_feed') and is_comment_feed() or function_exists('is_trackback') and is_trackback())){
-            return false; // The current request is an XML request, or is expecting an XML response.
-        }
-        return true;
-    }
-}
+		/**
+		 * @return array
+		 */
+	    public function get_cookies(){
+			return $this->cookies;
+		}
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//
-// These functions’ access is marked private. This means they are not intended for use by plugin or theme developers, only in other core functions.
-//
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		/**
+		 * @return string
+		 */
+	    public function get_filename(){
+			return $this->filename;
+		}
 
-if(!function_exists('__maybe_bb_avoid_full_size_images')){
-	/**
-	 * @return array
-	 */
-	function __maybe_bb_avoid_full_size_images($sizes){
-        if(!isset($sizes['full'])){
-            return $sizes;
-        }
-        if(1 === count($sizes)){
-            return $sizes;
-        }
-        unset($sizes['full']);
-        return $sizes;
+        /**
+         * Alias for wp_remote_retrieve_header().
+         *
+		 * @return array|string
+		 */
+	    public function get_header($header = ''){
+			if(isset($this->headers[$header])){
+                return $this->headers[$header];
+            }
+            return '';
+		}
+
+		/**
+		 * @return array
+		 */
+	    public function get_headers(){
+			return $this->headers;
+		}
+
+		/**
+		 * @return mixed|null
+		 */
+	    public function get_json_param($name = ''){
+            if(!isset($this->json_params[$name])){
+                return null;
+            }
+			return $this->json_params[$name];
+		}
+
+		/**
+		 * @return array
+		 */
+	    public function get_json_params(){
+			return $this->json_params;
+		}
+
+		/**
+		 * @return string
+		 */
+	    public function get_message(){
+			return $this->message;
+		}
+
+		/**
+		 * @return array
+		 */
+	    public function get_response(){
+			return $this->response;
+		}
+
+		/**
+		 * @return string
+		 */
+	    public function get_status(){
+			return $this->status;
+		}
+
+		/**
+		 * @return bool
+		 */
+	    public function has_json_param($name = ''){
+			return isset($this->json_params[$name]);
+		}
+
+		/**
+		 * @return bool
+		 */
+	    public function is_error(){
+			return !$this->success;
+		}
+
+		/**
+		 * @return bool
+		 */
+	    public function is_json(){
+			return $this->json;
+		}
+
+		/**
+		 * @return bool
+		 */
+	    public function is_success(){
+			return $this->success;
+		}
+
+		/**
+		 * @return WP_Error
+		 */
+	    public function to_wp_error(){
+            return $this->wp_error;
+		}
+
 	}
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// Singleton
+//
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+if(!class_exists('__Singleton')){ // Hardcoded.
+    class __Singleton { // Hardcoded.
+
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+        static private $instances = [];
+
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+        /**
+         * @return self
+         */
+        static public function get_instance(){
+            $class_name = get_called_class();
+            $md5 = md5($class_name);
+            if(isset(self::$instances[$md5])){
+                return self::$instances[$md5];
+            }
+            self::$instances[$md5] = new $class_name;
+            return self::$instances[$md5];
+        }
+
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+        /**
+         * @return void
+         */
+        protected function __construct(){
+            if(is_callable([$this, 'loader'])){
+                call_user_func([$this, 'loader']);
+            }
+        }
+
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+        /**
+         * @return string
+         */
+        public function get_name(){
+            return get_called_class();
+        }
+
+        /**
+         * @return string
+         */
+        public function prefix($str = ''){
+            $name = $this->get_name();
+            return __str_prefix($str, $name);
+        }
+
+        /**
+         * @return string
+         */
+        public function slug($str = ''){
+            $name = $this->get_name();
+            return __str_slug($str, $name);
+        }
+
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        //
+        // Hooks
+        //
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+        /**
+         * @return string
+         */
+        public function add_action($hook_name = '', $callback = null, $priority = 10, $accepted_args = 1){
+            $hook_name = $this->prefix($hook_name);
+            return __on($hook_name, $callback, $priority, $accepted_args);
+        }
+
+        /**
+         * @return string
+         */
+        public function add_action_once($hook_name = '', $callback = null, $priority = 10, $accepted_args = 1){
+            $hook_name = $this->prefix($hook_name);
+            return __one($hook_name, $callback, $priority, $accepted_args);
+        }
+
+        /**
+         * @return string
+         */
+        public function add_filter($hook_name = '', $callback = null, $priority = 10, $accepted_args = 1){
+            $hook_name = $this->prefix($hook_name);
+            return __on($hook_name, $callback, $priority, $accepted_args);
+        }
+
+        /**
+         * @return string
+         */
+        public function add_filter_once($hook_name = '', $callback = null, $priority = 10, $accepted_args = 1){
+            $hook_name = $this->prefix($hook_name);
+            return __one($hook_name, $callback, $priority, $accepted_args);
+        }
+
+        /**
+         * @return mixed
+         */
+        public function apply_filters($hook_name = '', $value = null, ...$arg){
+            $hook_name = $this->prefix($hook_name);
+            return apply_filters($hook_name, $value, ...$arg);
+        }
+
+        /**
+         * @return bool
+         */
+        public function did_action($hook_name = ''){
+            $hook_name = $this->prefix($hook_name);
+            return did_action($hook_name);
+        }
+
+        /**
+         * @return bool
+         */
+        public function did_filter($hook_name = ''){
+            $hook_name = $this->prefix($hook_name);
+            return did_filter($hook_name);
+        }
+
+        /**
+         * @return void
+         */
+        public function do_action($hook_name = '', ...$arg){
+            $hook_name = $this->prefix($hook_name);
+            do_action($hook_name, ...$arg);
+        }
+
+        /**
+         * @return void
+         */
+        public function do_action_ref_array($hook_name = '', $args = []){
+            $hook_name = $this->prefix($hook_name);
+            do_action_ref_array($hook_name, $args);
+        }
+
+        /**
+         * @return bool
+         */
+        public function doing_action($hook_name = ''){
+            $hook_name = $this->prefix($hook_name);
+            return doing_filter($hook_name);
+        }
+
+        /**
+         * @return bool
+         */
+        public function doing_filter($hook_name = ''){
+            $hook_name = $this->prefix($hook_name);
+            return doing_filter($hook_name);
+        }
+
+        /**
+         * @return bool
+         */
+        public function has_action($hook_name = '', $callback = false){
+            $hook_name = $this->prefix($hook_name);
+            return has_filter($hook_name, $callback);
+        }
+
+        /**
+         * @return bool
+         */
+        public function has_filter($hook_name = '', $callback = false){
+            $hook_name = $this->prefix($hook_name);
+            return has_filter($hook_name, $callback);
+        }
+
+        /**
+         * @return bool
+         */
+        public function remove_action($hook_name = '', $callback = null, $priority = 10){
+            $hook_name = $this->prefix($hook_name);
+            return remove_filter($hook_name, $callback, $priority);
+        }
+
+        /**
+         * @return bool
+         */
+        public function remove_filter($hook_name = '', $callback = null, $priority = 10){
+            $hook_name = $this->prefix($hook_name);
+            return remove_filter($hook_name, $callback, $priority);
+        }
+
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        //
+        // REST API
+        //
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+        /**
+         * @return bool
+         */
+        public function register_rest_route($route = '', $args = [], $override = false){
+            $route = $this->rest_route($route);
+            if(!$route){
+                return false;
+            }
+            return register_rest_route($this->rest_namespace(), $route, $args, $override);
+        }
+
+        /**
+         * @return string
+         */
+        public function rest_namespace($version = 0){
+            $version = __absint($version);
+            if($version < 1){
+                $version = 1;
+            }
+            $slug = $this->slug();
+            $namespace = $slug . '/v' . $version;
+            return $namespace;
+        }
+
+        /**
+         * @return string
+         */
+        public function rest_route($route = ''){
+            $route = sanitize_title($route);
+            if(!$route){
+                return '';
+            }
+            $slug = $this->slug();
+            $search = $slug . '-'; // With trailing dash.
+            if(__str_starts_with($route, $search)){
+                $route = str_replace($search, '', $route);
+            }
+            return $route;
+        }
+
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        //
+        // Cache
+        //
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+        /**
+         * @return mixed
+         */
+        public function get_array_cache($array_key = '', $key = '', $default = null){
+            $array = (array) $this->get_cache($array_key, []);
+            return isset($array[$key]) ? $array[$key] : $default;
+        }
+
+        /**
+         * @return mixed
+         */
+        public function get_cache($key = '', $default = null){
+            $group = $this->prefix();
+            $value = wp_cache_get($key, $group, false, $found);
+            if($found){
+                return $value;
+            }
+            return $default;
+        }
+
+        /**
+         * @return bool
+         */
+        public function isset_array_cache($array_key = '', $key = ''){
+            $array = (array) $this->get_cache($array_key, []);
+            return isset($array[$key]);
+        }
+
+        /**
+         * @return bool
+         */
+        public function isset_cache($key = ''){
+            $group = $this->prefix();
+            $value = wp_cache_get($key, $group, false, $found);
+            return $found;
+        }
+
+        /**
+         * @return bool
+         */
+        public function set_array_cache($array_key = '', $key = '', $data = null){
+            $array = (array) $this->get_cache($array_key, []);
+            $array[$key] = $data;
+            return $this->set_cache($array_key, $array);
+        }
+
+        /**
+         * @return bool
+         */
+        public function set_cache($key = '', $data = null){
+            $group = $this->prefix();
+            return wp_cache_set($key, $data, $group);
+        }
+
+        /**
+         * @return bool
+         */
+        public function unset_array_cache($array_key = '', $key = ''){
+            $array = (array) $this->get_cache($array_key, []);
+            if(isset($array[$key])){
+                unset($array[$key]);
+            }
+            return $this->set_cache($array_key, $array);
+        }
+
+        /**
+         * @return bool
+         */
+        public function unset_cache($key = ''){
+            $group = $this->prefix();
+            return wp_cache_delete($key, $group);
+        }
+
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    }
 }

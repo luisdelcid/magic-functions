@@ -5,7 +5,7 @@
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 if('undefined' === typeof(MAGIC_FUNCTIONS)){ // Hardcoded.
-    const MAGIC_FUNCTIONS = '5.5.5'; // Hardcoded.
+    const MAGIC_FUNCTIONS = '5.4.23'; // Hardcoded.
 }
 
 /**

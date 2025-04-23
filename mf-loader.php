@@ -43,7 +43,7 @@ if(!function_exists('_maybe_load_magic_functions')){
         if(defined('MAGIC_FUNCTIONS')){ // Already loaded.
             return;
         }
-        $file = plugin_dir_path(__FILE__) . 'includes/magic-functions.php'; // Hardcoded.
+        $file = plugin_dir_path(__FILE__) . 'mf-includes/magic-functions.php'; // Hardcoded.
         if(!file_exists($file)){
             return;
         }
@@ -60,7 +60,7 @@ if(!function_exists('_maybe_load_magic_functions')){
 //
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-if(!did_action('magic_functions_preloaded')){ // Hardcoded.
+if(!did_action('setup_magic_functions')){ // Hardcoded.
     _load_magic_functions();
-    do_action('magic_functions_preloaded'); // Hardcoded.
+    do_action('setup_magic_functions'); // Hardcoded.
 }

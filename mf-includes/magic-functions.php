@@ -272,7 +272,7 @@ if(!function_exists('__maybe_include_theme_functions')){
         		require_once $theme . '/' . $filename;
         	}
         }
-		do_action('after_magic_functions_loaded'); // Hardcoded.
+		do_action('after_setup_magic_functions'); // Hardcoded.
 	}
 }
 

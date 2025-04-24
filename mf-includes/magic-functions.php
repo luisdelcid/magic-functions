@@ -7,7 +7,7 @@
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 if(!defined('MAGIC_FUNCTIONS')){ // Hardcoded.
-	define('MAGIC_FUNCTIONS', '5.4.23'); // Hardcoded.
+	define('MAGIC_FUNCTIONS', '5.4.23.1'); // Hardcoded.
 }
 
 if(!function_exists('__dir')){

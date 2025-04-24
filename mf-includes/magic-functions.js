@@ -5,7 +5,7 @@
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 if('undefined' === typeof(MAGIC_FUNCTIONS)){ // Hardcoded.
-    const MAGIC_FUNCTIONS = '5.4.23'; // Hardcoded.
+    const MAGIC_FUNCTIONS = '5.4.23.1'; // Hardcoded.
 }
 
 /**
@@ -62,6 +62,57 @@ function __prefix(){
  */
 function __slug(){
     return 'magic-functions'; // Hardcoded.
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// Cookies
+//
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+/**
+ * @return void
+ */
+function __set_cookie(name = '', value = '', expires = 0){
+    var site_url = __object_property('site_url');
+    if(_.isNull(site_url)){
+        site_url = '/';
+    } else {
+        site_url += '/';
+    }
+    if(!name || !value || !expires){
+        return;
+    }
+    var path = site_url.replace(/https?:\/\/[^\/]+/i, ''),
+        domain = '',
+        secure = ('https:' === window.location.protocol);
+    if(_.isObject(value)){
+        var str = '';
+        wpCookies.each(value, function(val, key){
+			str += (!str ? '' : '&') + key + '=' + val;
+		});
+        value = str;
+    }
+    wpCookies.set(name, value, expires, path, domain, secure);
+}
+
+/**
+ * @return void
+ */
+function __unset_cookie(name = ''){
+    var site_url = __object_property('site_url');
+    if(_.isNull(site_url)){
+        site_url = '/';
+    } else {
+        site_url += '/';
+    }
+    if(!name){
+        return;
+    }
+    var path = site_url.replace(/https?:\/\/[^\/]+/i, '').replace('/wp-json/', '/'),
+        domain = '',
+        secure = ('https:' === window.location.protocol);
+    wpCookies.remove(name, path, domain, secure);
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -887,6 +938,13 @@ function __utm_param_name(name = ''){
     return utm_pairs[name];
 }
 
+/**
+ * @return void
+ */
+function __utm_parameters(){
+    __maybe_set_utm_cookie();
+}
+
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
 // These functions’ access is marked private. This means they are not intended for use by plugin or theme developers, only in other core functions.
@@ -907,6 +965,28 @@ function __at_least_one_utm_get_param(){
         return false; // Break.
     });
     return utm_params;
+}
+
+/**
+ * @return void
+ */
+function __maybe_set_utm_cookie(){
+    if(!__at_least_one_utm_get_param()){
+        return;
+    }
+    __maybe_unset_utm_cookie();
+    var name = __utm_cookie_name(),
+        value = __utm_params_from_get(),
+        expires = 2 * 30 * 24 * 60 * 60; // https://support.google.com/analytics/answer/7667196?hl=en_US&utm_id=ad
+    __set_cookie(name, value, expires);
+}
+
+/**
+ * @return void
+ */
+function __maybe_unset_utm_cookie(){
+    var name = __utm_cookie_name(); // https://support.google.com/analytics/answer/7667196?hl=en_US&utm_id=ad
+    __unset_cookie(name);
 }
 
 /**
@@ -1584,11 +1664,12 @@ var __singleton = class __Singleton { // Hardcoded.
 	 * @return this
 	 */
 	static get_instance(){
-        if(_.isUndefined(__singleton.#instances[this.name])){ // Hardcoded.
-            __singleton.#is_internal_constructing = true; // Hardcoded.
-		    __singleton.#instances[this.name] = new this; // Hardcoded.
+        var parent = Object.getPrototypeOf(this);
+        if(_.isUndefined(parent.#instances[this.name])){
+            parent.#is_internal_constructing = true;
+		    parent.#instances[this.name] = new this;
         }
-		return __singleton.#instances[this.name]; // Hardcoded.
+		return parent.#instances[this.name];
 	}
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1597,15 +1678,16 @@ var __singleton = class __Singleton { // Hardcoded.
 	 * @return void
 	 */
 	constructor(){
-        this.constructor_name = this.constructor.name;
-        if(__singleton.#is_internal_constructing){ // Hardcoded.
+        var parent = Object.getPrototypeOf(this.constructor);
+        if(parent.#is_internal_constructing){
+            this.constructor_name = this.constructor.name;
             if(_.isFunction(this.loader)){
                 this.loader();
             }
 		} else {
 			throw new TypeError('This class is not constructable.');
         }
-        __singleton.#is_internal_constructing = false; // Hardcoded.
+        parent.#is_internal_constructing = false;
 	}
 
 	/**
@@ -1620,6 +1702,9 @@ var __singleton = class __Singleton { // Hardcoded.
 	 * @return string
 	 */
 	get_name(){
+        if(_.isUndefined(this.constructor_name)){
+            return '';
+        }
 		return this.constructor_name;
 	}
 

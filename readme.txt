@@ -2,7 +2,7 @@
 Contributors: luisdelcid
 Donate link: https://luisdelcid.com
 Tags: magic, functions
-Tested up to: 5.5.13.1
+Tested up to: 5.5.13.2
 Requires at least: 5.6
 Requires PHP: 5.6
 Stable tag: 0.7.15

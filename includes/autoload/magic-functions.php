@@ -6612,7 +6612,7 @@ if(!function_exists('__parse_response')){
 		$response->message = '';
 		$response->response = [];
 		$response->status = false;
-		$response->wp_error = new \WP_Error;
+		$response->wp_error = null;
 		if(is_wp_error($raw_response)){
 			$response->message = $raw_response->get_error_message();
 			$response->wp_error = $raw_response;
@@ -7932,12 +7932,17 @@ if(!function_exists('__zoom_access_token')){
             'timeout' => 10,
         ];
         $response = __remote_post($url, $args);
-        if(!$response->is_success()){
-            return $response->wp_error();
+        if(!$response->status){
+            return $response->wp_error;
         }
-        $access_token = $response->json_param('access_token');
+        if(!isset($response->json_params['access_token'])){
+            $message = sprintf(translate('Missing parameter(s): %s'), 'access_token') . '.';
+            return __error($message);
+        }
+        $access_token = $response->json_params['access_token'];
         if(!$access_token){
-            return __error();
+            $message = sprintf(translate('Invalid parameter(s): %s'), 'access_token') . '.';
+            return __error($message);
         }
         __set_cache('zoom_access_token', $access_token);
         return $access_token;

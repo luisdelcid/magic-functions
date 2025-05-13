@@ -6,25 +6,6 @@
 //
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-if(!defined('MAGIC_FUNCTIONS')){ // Hardcoded.
-	define('MAGIC_FUNCTIONS', '5.4.23.1'); // Hardcoded.
-}
-
-if(!function_exists('__dir')){
-	/**
-	 * @return string|WP_Error
-	 */
-	function __dir($subdir = ''){
-        $dir = 'magic-functions'; // Hardcoded.
-        $subdir = ltrim($subdir, '/');
-	    $subdir = untrailingslashit($subdir);
-	    if($subdir){
-	        $dir .= '/' . $subdir;
-	    }
-		return __mkdir($dir);
-	}
-}
-
 if(!function_exists('__enqueue_asset')){
     /**
      * This function MUST be called inside the 'admin_enqueue_scripts', 'login_enqueue_scripts' or 'wp_enqueue_scripts' action hooks.
@@ -69,10 +50,10 @@ if(!function_exists('__enqueue_asset')){
 		$maybe_autoload = false;
         $path = __url_to_dir($src);
         if($path){ // This WordPress installation.
-            $plugin_dir_path = plugin_dir_path(dirname(__FILE__)); // Hardcoded.
+            $plugin_dir_path = plugin_dir_path(dirname(dirname(__FILE__))); // Hardcoded.
             if(!__str_starts_with($path, $plugin_dir_path)){ // Not this plugin.
                 $maybe_autoload = true;
-                $deps[] = 'magic-functions'; // Hardcoded.
+                $deps[] = __slug();
             }
         }
         $l10n = [];
@@ -99,66 +80,23 @@ if(!function_exists('__enqueue_asset')){
     }
 }
 
-if(!function_exists('__enqueue_magic_functions')){ // Hardcoded.
+if(!function_exists('__instance')){
 	/**
-	 * @return void
+	 * @return object|WP_Error
 	 */
-	function __enqueue_magic_functions(){ // Hardcoded.
-		$handle = 'magic-functions'; // Hardcoded.
-		$file = $includes = plugin_dir_path(__FILE__) . $handle . '.js';
-		if(!file_exists($file)){
-            return;
-        }
-		__omni_enqueue('stackframe', 'https://cdn.jsdelivr.net/npm/stackframe@1.3.4/stackframe.min.js', [], '1.3.4');
-        __omni_enqueue('error-stack-parser', 'https://cdn.jsdelivr.net/npm/error-stack-parser@2.1.4/error-stack-parser.min.js', ['stackframe'], '2.1.4');
-        $deps = ['error-stack-parser', 'jquery', 'underscore', 'utils', 'wp-api', 'wp-hooks'];
-        $l10n = [
-            'mu_plugins_url' => __dir_to_url(wp_normalize_path(WPMU_PLUGIN_DIR)),
-            'plugins_url' => __dir_to_url(wp_normalize_path(WP_PLUGIN_DIR)),
-            'site_url' => site_url(),
-        ];
-        __local_omni_enqueue($handle, $file, $deps, $l10n);
-	}
-}
-
-if(!function_exists('__error')){
-	/**
-	 * Alias for new WP_Error::__construct.
-	 *
-	 * @return WP_Error
-	 */
-	function __error($message = '', $data = ''){
-		if(is_wp_error($message)){
-			$data = $message->get_error_data();
-			$message = $message->get_error_message();
-		}
-		if(empty($message)){
-			$message = translate('Something went wrong.');
-		}
-		$code = 'magic_error'; // Hardcoded.
-		return new \WP_Error($code, $message, $data);
-	}
-}
-
-if(!function_exists('__get_instance')){
-	/**
-	 * @return __Singleton|WP_Error // Hardcoded.
-	 */
-	function __get_instance($class = ''){
-	    if(!$class){
-            $error_msg = translate('The "%s" argument must be a non-empty string.');
-            $error_msg = sprintf($error_msg, 'class');
-            return __error($error_msg);
-	    }
+	function __instance($class = '', $singleton = false){
 	    if(!class_exists($class)){
             $error_msg = sprintf(translate('Missing parameter(s): %s'), '"' . $class . '"') . '.';
 	        return __error($error_msg);
 	    }
-	    if(!is_subclass_of($class, '__Singleton')){ // Hardcoded.
+	    if(!is_subclass_of($class, '__Class')){ // Hardcoded.
             $error_msg = sprintf(translate('Invalid parameter(s): %s'), '"' . $class . '"') . '.';
 	        return __error($error_msg);
 	    }
-	    return call_user_func([$class, 'get_instance']);
+		if($singleton){
+			return call_user_func([$class, 'get_instance']);
+		}
+	    return call_user_func([$class, 'new_instance']);
 	}
 }
 
@@ -171,46 +109,12 @@ if(!function_exists('__prefix')){
 	}
 }
 
-if(!function_exists('__remote_request')){
-	/**
-	 * @return object|WP_Error
-	 */
-	function __remote_request($method = '', $url = '', $args = []){
-        $args = wp_parse_args($args);
-		$args['method'] = $method;
-		$args = __sanitize_remote_args($args, $url);
-		$response = wp_remote_request($url, $args);
-        if(is_wp_error($response)){
-            return $response;
-        }
-        $response = new \__Response($response); // Hardcoded.
-        return $response;
-	}
-}
-
 if(!function_exists('__slug')){
 	/**
 	 * @return string
 	 */
 	function __slug(){
         return 'magic-functions'; // Hardcoded.
-	}
-}
-
-if(!function_exists('__toolbox')){
-	/**
-	 * This function is here for backward compatibility with old plugins and will be removed in a future version.
-	 *
-	 * @return __Toolbox
-	 */
-	function __toolbox($atts = []){
-        $md5 = __md5($atts);
-        if(__isset_array_cache('toolboxes', $md5)){
-			return __get_array_cache('toolboxes', $md5, null);
-		}
-        $toolbox = new \__Toolbox($atts);
-        __set_array_cache('toolboxes', $md5, $toolbox);
-        return $toolbox;
 	}
 }
 
@@ -253,27 +157,6 @@ if(!function_exists('__context_enqueue')){
         __add_action_once($context . '_enqueue_scripts', '__maybe_enqueue_' . $context . '_assets'); // Hardcoded.
         return $handle;
     }
-}
-
-if(!function_exists('__maybe_include_theme_functions')){
-	/**
-	 * This function MUST be called inside the 'after_setup_theme' action hook.
-	 *
-	 * @return void
-	 */
-	function __maybe_include_theme_functions(){
-		if(!doing_action('after_setup_theme')){ // Too early or too late.
-	        return;
-	    }
-		$filename = 'magic-functions.php'; // Hardcoded.
-		// Load the functions for the active theme, for both parent and child theme if applicable.
-        foreach(wp_get_active_and_valid_themes() as $theme){
-        	if(file_exists($theme . '/' . $filename)){
-        		require_once $theme . '/' . $filename;
-        	}
-        }
-		do_action('after_setup_magic_functions'); // Hardcoded.
-	}
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1225,7 +1108,7 @@ if(!function_exists('__cf7_error')){
 	function __cf7_error($message = ''){
 		if(empty($message)){
 			//$message = translate('Contact form not found.', 'contact-form-7');
-            // __('An error occurred.');
+            //translate('An error occurred.');
             $message = translate('An error occurred while processing your request. Please try again later.');
             $message = __first_p($message);
 		}
@@ -2926,6 +2809,23 @@ if(!function_exists('__local_enqueue')){
     }
 }
 
+if(!function_exists('__local_enqueue_asset')){
+    /**
+     * This function MUST be called inside the 'admin_enqueue_scripts', 'login_enqueue_scripts' or 'wp_enqueue_scripts' action hooks.
+     *
+     * @return string|WP_Error
+     */
+    function __local_enqueue_asset($handle = '', $file = '', $deps = [], $args_media = true){
+        if(!file_exists($file)){
+            $error_msg = translate('File does not exist! Please double check the name and try again.');
+            return __error($error_msg);
+        }
+        $src = __dir_to_url($file);
+        $ver = filemtime($file);
+        return __enqueue_asset($handle, $src, $deps, $ver, $args_media);
+    }
+}
+
 if(!function_exists('__local_login_enqueue')){
     /**
      * @return string|WP_Error
@@ -3010,6 +2910,28 @@ if(!function_exists('__omni_enqueue')){
 //
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+if(!function_exists('__enqueue_plugin_dependencies')){
+	/**
+	 * @return void
+	 */
+	function __enqueue_plugin_dependencies(){
+		$handle = __slug();
+		$file = plugin_dir_path(__FILE__) . $handle . '.js';
+		if(!file_exists($file)){
+            return;
+        }
+		__enqueue_asset('stackframe', 'https://cdn.jsdelivr.net/npm/stackframe@1.3.4/stackframe.min.js', [], '1.3.4');
+        __enqueue_asset('error-stack-parser', 'https://cdn.jsdelivr.net/npm/error-stack-parser@2.1.4/error-stack-parser.min.js', ['stackframe'], '2.1.4');
+        $deps = ['error-stack-parser', 'jquery', 'underscore', 'utils', 'wp-api', 'wp-hooks'];
+        $l10n = [
+            'mu_plugins_url' => __dir_to_url(wp_normalize_path(WPMU_PLUGIN_DIR)),
+            'plugins_url' => __dir_to_url(wp_normalize_path(WP_PLUGIN_DIR)),
+            'site_url' => site_url(),
+        ];
+        __local_enqueue_asset($handle, $file, $deps, $l10n);
+	}
+}
+
 if(!function_exists('__maybe_enqueue_admin_assets')){
     /**
 	 * This function MUST be called inside the 'admin_enqueue_scripts' action hook.
@@ -3076,6 +2998,25 @@ if(!function_exists('__maybe_enqueue_login_assets')){
 //
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+if(!function_exists('__error')){
+	/**
+	 * Alias for new WP_Error::__construct.
+	 *
+	 * @return WP_Error
+	 */
+	function __error($message = '', $data = ''){
+		if(is_wp_error($message)){
+			$data = $message->get_error_data();
+			$message = $message->get_error_message();
+		}
+		if(empty($message)){
+			$message = translate('An error occurred.'); // Something went wrong.
+		}
+		$code = __str_prefix('error');
+		return new \WP_Error($code, $message, $data);
+	}
+}
+
 if(!function_exists('__exit_with_error')){
 	/**
 	 * @return void
@@ -3103,7 +3044,7 @@ if(!function_exists('__exit_with_error')){
             $title = get_status_header_desc($title);
         }
 		if(!$title){
-			$title = translate('Something went wrong.');
+			$title = translate('An error occurred.'); // Something went wrong.
 		}
         $html = '<h1>' . $title . '</h1>';
         $html .= '<p>';
@@ -3241,6 +3182,21 @@ if(!function_exists('__check_upload_size')){
 			return __error($error_msg);
 		}
 		return true;
+	}
+}
+
+if(!function_exists('__dir')){
+	/**
+	 * @return string|WP_Error
+	 */
+	function __dir($subdir = ''){
+        $target = __slug();
+        $subdir = ltrim($subdir, '/');
+	    $subdir = untrailingslashit($subdir);
+	    if($subdir){
+	        $target .= '/' . $subdir;
+	    }
+		return __mkdir($target);
 	}
 }
 
@@ -3598,7 +3554,8 @@ if(!function_exists('__test_error')){
 		]; // Courtesy of php.net, the strings that describe the error indicated in $_FILES[{form field}]['error'].
 		if($error > 0){
 			if(empty($upload_error_strings[$error])){
-				$error_msg = translate('Something went wrong.');
+				$error_msg = translate('An unexpected error occurred. Something may be wrong with WordPress.org or this server&#8217;s configuration. If you continue to have problems, please try the <a href="%s">support forums</a>.');
+				$error_msg = __first_p($error_msg);
 			} else {
 				$error_msg = $upload_error_strings[$error];
 			}
@@ -5888,39 +5845,90 @@ if(!function_exists('__plugin_slug')){
 
 if(!function_exists('__plugin_update_checker')){
     /**
-     * @return YahnisElsts\PluginUpdateChecker\v5p4\Vcs\BaseChecker|WP_Error
+     * @return void
      */
     function __plugin_update_checker($file = ''){
         if(!$file){
             $file = __caller_file(1); // One level above.
             if(is_wp_error($file)){
-                return $file;
+                return;
             }
         }
         $plugin_file = __plugin_file($file);
         if(is_wp_error($plugin_file)){
-            return $plugin_file;
+            return;
         }
         $update_uri = __plugin_meta('UpdateURI', $plugin_file);
         if(is_wp_error($update_uri)){
-            return __error(translate('A valid URL was not provided.'));
+            return;
         }
         if(!wp_http_validate_url($update_uri)){
-            return __error(translate('Invalid URL.'));
+            return;
         }
         $plugin_slug = __plugin_slug('', $plugin_file);
-        $update_checker = __build_update_checker($update_uri, $plugin_file, $plugin_slug);
-        if(is_wp_error($update_checker)){
-            return $update_checker;
+        if(doing_action('plugins_loaded')){ // Just in time.
+            $update_checker = __build_update_checker($update_uri, $plugin_file, $plugin_slug);
+            if(is_wp_error($update_checker)){
+                return;
+            }
+            $constant_name = strtoupper(__plugin_prefix('license', $plugin_file));
+            if(!defined($constant_name)){
+                return;
+            }
+            $constant_value = constant($constant_name);
+            __set_update_license($plugin_slug, $constant_value);
+			return;
+	    }
+        if(did_action('plugins_loaded')){ // Too late.
+			return;
+		}
+        $puc = [
+            'full_path' => $plugin_file,
+            'metadata_url' => $update_uri,
+            'slug' => $plugin_slug,
+        ];
+        $md5 = __md5($puc);
+		if(__isset_array_cache('pucs', $md5)){
+            return; // Prevent admin notice being added twice.
         }
-        $constant_name = strtoupper(__plugin_prefix('license', $plugin_file));
-        if(!defined($constant_name)){
-            return $update_checker;
-        }
-        $constant_value = constant($constant_name);
-        __set_update_license($plugin_slug, $constant_value);
-        return $update_checker;
+		__set_array_cache('pucs', $md5, $puc);
+		__add_action_once('plugins_loaded', '__maybe_plugin_update_checker', 0); // Highest priority.
     }
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// These functions’ access is marked private. This means they are not intended for use by plugin or theme developers, only in other core functions.
+//
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+if(!function_exists('__maybe_plugin_update_checker')){
+	/**
+	 * This function MUST be called inside the 'plugins_loaded' action hook.
+	 *
+	 * @return void
+	 */
+	function __maybe_plugin_update_checker(){
+		if(!doing_action('plugins_loaded')){ // Too early or too late.
+	        return;
+	    }
+	    $pucs = (array) __get_cache('pucs', []);
+		if(empty($pucs)){
+			return;
+		}
+		foreach($pucs as $md5 => $puc){
+            $update_checker = __build_update_checker($puc['metadata_url'], $puc['full_path'], $puc['slug']);
+            if(is_wp_error($update_checker)){
+                continue;
+            }
+            $constant_name = strtoupper(__plugin_prefix('license', $puc['full_path']));
+            if(!defined($constant_name)){
+                continue;
+            }
+            $constant_value = constant($constant_name);
+            __set_update_license($puc['slug'], $constant_value);
+		}
+	}
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -6450,36 +6458,25 @@ if(!function_exists('__get_content_type')){
 	}
 }
 
-if(!function_exists('__get_response_message')){
-	/**
-	 * @return string
-	 */
-	function __get_response_message($response = []){
-		$message = wp_remote_retrieve_response_message($response);
-        $message = trim($message);
-		if($message){
-			return $message;
-		}
-		$message = __get_status_message($response);
-		return $message;
-	}
-}
-
 if(!function_exists('__get_status_message')){
 	/**
 	 * @return string
 	 */
-	function __get_status_message($response = []){
-		$code = wp_remote_retrieve_response_code($response);
+	function __get_status_message($code = 0){
+		if(!$code){
+			$error_msg = translate('An unexpected error occurred. Something may be wrong with WordPress.org or this server&#8217;s configuration. If you continue to have problems, please try the <a href="%s">support forums</a>.');
+			$error_msg = __first_p($error_msg);
+			return $error_msg;
+		}
 		$message = get_status_header_desc($code);
-        $message = trim($message);
+		$message = trim($message);
 		if($message){
 			return $message;
 		}
-        if(__is_success($code)){
-            return sprintf(translate('SUCCESS: %s'), $code);
-        }
-        return sprintf(translate('FAILED: %s'), $code);
+		if(__is_success($code)){
+			return sprintf(translate('SUCCESS: %s'), $code);
+		}
+		return sprintf(translate('FAILED: %s'), $code);
 	}
 }
 
@@ -6581,6 +6578,76 @@ if(!function_exists('__is_wp_http_requests_response')){
 			return false; // https://developer.wordpress.org/reference/classes/wp_http_requests_response/
 		}
 	    return true;
+	}
+}
+
+if(!function_exists('__parse_response')){
+	/**
+	 * @return stdClass
+	 */
+	function __parse_response($raw_response = []){
+		$response = new \stdClass;
+		$response->body = '';
+		$response->code = 0;
+		$response->cookies = [];
+		$response->filename = '';
+		$response->headers = [];
+		$response->json = false;
+		$response->json_params = [];
+		$response->message = '';
+		$response->response = [];
+		$response->status = false;
+		$response->wp_error = new \WP_Error;
+		if(is_wp_error($raw_response)){
+			$response->message = $raw_response->get_error_message();
+			$response->wp_error = $raw_response;
+		} elseif(__is_wp_http_requests_response($raw_response)){
+			$array = $raw_response['response']->to_array();
+			$response->body = trim($array['body']);
+			$response->code = absint($array['response']['code']);
+			$response->cookies = $array['cookies'];
+			$response->filename = $array['filename'];
+			$response->headers = $array['headers'];
+			$response->json = __is_json_content_type($raw_response);
+			$response->message = trim($array['response']['message']);
+			$response->response = $raw_response;
+			$response->status = __is_success($response->code);
+			if(!$response->message){
+				$response->message = __get_status_message($response->code);
+			}
+			if(!$response->status){
+				$response->wp_error = __error($response->message, $raw_response);
+			}
+			if($response->json){
+				$json_params = __json_decode($response->body, true);
+				if(is_wp_error($json_params)){
+					$response->message = $json_params->get_error_message();
+					if($response->status){
+						$response->status = false;
+						$response->wp_error = $json_params;
+					} else {
+						$response->wp_error->merge_from($json_params);
+					}
+				} else {
+					$response->json_params = $json_params;
+					$maybe_error = __seems_error($json_params);
+					if(is_wp_error($maybe_error)){
+						$response->message = $maybe_error->get_error_message();
+						if($response->status){
+							$response->status = false;
+							$response->wp_error = $maybe_error;
+						} else {
+							$response->wp_error->merge_from($maybe_error);
+						}
+					}
+				}
+			}
+		} else {
+			$error_msg = translate('Invalid data provided.');
+			$response->message = $error_msg;
+			$response->wp_error = __error($error_msg, $raw_response);
+		}
+		return $response;
 	}
 }
 
@@ -6755,6 +6822,19 @@ if(!function_exists('__remote_put')){
 	 */
 	function __remote_put($url = '', $args = []){
 		return __remote_request('PUT', $url, $args);
+	}
+}
+
+if(!function_exists('__remote_request')){
+	/**
+	 * @return stdClass
+	 */
+	function __remote_request($method = '', $url = '', $args = []){
+        $args = wp_parse_args($args);
+		$args['method'] = $method;
+		$args = __sanitize_remote_args($args, $url);
+		$response = wp_remote_request($url, $args);
+		return __parse_response($response);
 	}
 }
 
@@ -7467,23 +7547,6 @@ if(!function_exists('__use_tgm_plugin_activation')){
 //
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-if(!function_exists('__include_theme_functions')){
-	/**
-	 * This function MUST be called inside the 'after_setup_theme' action hook.
-     *
-	 * @return void
-	 */
-	function __include_theme_functions(){
-		if(doing_action('after_setup_theme')){ // Just in time.
-            __maybe_include_theme_functions();
-        }
-		if(did_action('after_setup_theme')){ // Too late.
-            return;
-        }
-		__add_action_once('after_setup_theme', '__maybe_include_theme_functions');
-	}
-}
-
 if(!function_exists('__theme_is')){
     /**
      * @return bool
@@ -7512,6 +7575,32 @@ if(!function_exists('__theme_is_child_of')){
 		__set_array_cache('theme_is_child_of', $template, $theme_is_child_of);
     	return $theme_is_child_of;
     }
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// These functions’ access is marked private. This means they are not intended for use by plugin or theme developers, only in other core functions.
+//
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+if(!function_exists('__include_theme_functions')){
+	/**
+	 * This function MUST be called inside the 'after_setup_theme' action hook.
+	 *
+	 * @return void
+	 */
+	function __include_theme_functions(){
+		if(!doing_action('after_setup_theme')){ // Too early or too late.
+	        return;
+	    }
+        // Load the functions for the active theme, for both parent and child theme if applicable.
+		$filename = __slug() . '.php';
+        foreach(wp_get_active_and_valid_themes() as $theme){
+        	if(file_exists($theme . '/' . $filename)){
+        		require_once $theme . '/' . $filename;
+        	}
+        }
+	}
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -7738,6 +7827,39 @@ if(!function_exists('__wf_bulk_countries')){
     }
 }
 
+if(!function_exists('__wf_code_execution_protection')){
+    /**
+     * @return bool
+     */
+    function __wf_code_execution_protection(){
+        /*if(!class_exists('wfConfig')){
+            return false;
+        }
+        return wfConfig::get('disableCodeExecutionUploads');*/
+        global $is_apache;
+        if(!$is_apache){
+            return false;
+        }
+        $upload_dir = wp_get_upload_dir();
+		if($upload_dir['error']){
+			return __error($upload_dir['error']);
+		}
+        $basedir = $upload_dir['basedir'];
+        $htaccess = $basedir . '/.htaccess';
+        if(!file_exists($htaccess)){
+            return false;
+        }
+        if(!function_exists('extract_from_markers')){
+            require_once(ABSPATH . 'wp-admin/includes/misc.php');
+        }
+        $existing_rules = array_filter(extract_from_markers($htaccess, 'Wordfence code execution protection'));
+        if(empty($existing_rules)){
+            return false;
+        }
+        return true;
+    }
+}
+
 if(!function_exists('__wf_countries')){
     /**
      * @return array
@@ -7949,208 +8071,30 @@ if(!function_exists('__zoom_request')){
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
-// These classes’ access is marked private. This means they are not intended for use by plugin or theme developers, only in other core functions.
-//
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//
-// Response
+// Classes
 //
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-if(!class_exists('__Response')){ // Hardcoded.
-	final class __Response { // Hardcoded.
-
-		private $body = '', $code = 0, $cookies = [], $filename = '', $headers = [], $json = false, $json_params = [], $message = '', $response = [], $status = '', $success = false, $wp_error = null;
-
-		/**
-		 * @return void
-		 */
-	    public function __construct($response = []){
-            if(__is_wp_http_requests_response($response)){
-                $array = $response['response']->to_array();
-                $this->body = trim($array['body']);
-                $this->code = absint($array['response']['code']);
-                $this->cookies = $array['cookies'];
-                $this->filename = $array['filename'];
-                $this->headers = $array['headers'];
-                $this->json = __is_json_content_type($response);
-                $this->message = trim($array['response']['message']);
-                $this->response = $response;
-                $this->status = __get_status_message($response);
-                if(!$this->message){
-                    $this->message = $this->status;
-                }
-                $this->success = __is_success($this->code);
-                if($this->success){
-                    $this->wp_error = new \WP_Error;
-                } else {
-                    $this->wp_error = __error($this->message, $this->response);
-                }
-                if($this->json){
-                    $json_params = __json_decode($this->body, true);
-                    if(is_wp_error($json_params)){
-                        if($this->success){
-                            $this->success = false;
-                            $this->message = $json_params->get_error_message();
-                            $this->wp_error = $json_params;
-                        } else {
-                            $this->message = $json_params->get_error_message();
-                            $this->wp_error->merge_from($json_params);
-                        }
-                    } else {
-                        $this->json_params = $json_params;
-                        $maybe_error = __seems_error($json_params);
-                        if(is_wp_error($maybe_error)){
-                            if($this->success){
-                                $this->success = false;
-                                $this->message = $maybe_error->get_error_message();
-                                $this->wp_error = $maybe_error;
-                            } else {
-                                $this->message = $maybe_error->get_error_message();
-                                $this->wp_error->merge_from($maybe_error);
-                            }
-                        }
-                    }
-                }
-            } else {
-                $error_msg = translate('Invalid data provided.');
-                $this->message = $error_msg;
-                $this->response = $response;
-                $this->wp_error = __error($error_msg, $response);
-            }
-		}
-
-		/**
-		 * @return string
-		 */
-	    public function get_body(){
-			return $this->body;
-		}
-
-		/**
-		 * @return int
-		 */
-	    public function get_code(){
-			return $this->code;
-		}
-
-		/**
-		 * @return array
-		 */
-	    public function get_cookies(){
-			return $this->cookies;
-		}
-
-		/**
-		 * @return string
-		 */
-	    public function get_filename(){
-			return $this->filename;
-		}
-
-        /**
-         * Alias for wp_remote_retrieve_header().
-         *
-		 * @return array|string
-		 */
-	    public function get_header($header = ''){
-			if(isset($this->headers[$header])){
-                return $this->headers[$header];
-            }
-            return '';
-		}
-
-		/**
-		 * @return array
-		 */
-	    public function get_headers(){
-			return $this->headers;
-		}
-
-		/**
-		 * @return mixed|null
-		 */
-	    public function get_json_param($name = ''){
-            if(!isset($this->json_params[$name])){
-                return null;
-            }
-			return $this->json_params[$name];
-		}
-
-		/**
-		 * @return array
-		 */
-	    public function get_json_params(){
-			return $this->json_params;
-		}
-
-		/**
-		 * @return string
-		 */
-	    public function get_message(){
-			return $this->message;
-		}
-
-		/**
-		 * @return array
-		 */
-	    public function get_response(){
-			return $this->response;
-		}
-
-		/**
-		 * @return string
-		 */
-	    public function get_status(){
-			return $this->status;
-		}
-
-		/**
-		 * @return bool
-		 */
-	    public function has_json_param($name = ''){
-			return isset($this->json_params[$name]);
-		}
-
-		/**
-		 * @return bool
-		 */
-	    public function is_error(){
-			return !$this->success;
-		}
-
-		/**
-		 * @return bool
-		 */
-	    public function is_json(){
-			return $this->json;
-		}
-
-		/**
-		 * @return bool
-		 */
-	    public function is_success(){
-			return $this->success;
-		}
-
-		/**
-		 * @return WP_Error
-		 */
-	    public function to_wp_error(){
-            return $this->wp_error;
-		}
-
+if(!function_exists('__get_instance')){
+	/**
+	 * @return object|WP_Error
+	 */
+	function __get_instance($class = ''){
+	    return __instance($class, true);
 	}
 }
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//
-// Singleton
-//
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+if(!function_exists('__new_instance')){
+	/**
+	 * @return object|WP_Error
+	 */
+	function __new_instance($class = ''){
+	    return __instance($class);
+	}
+}
 
-if(!class_exists('__Singleton')){ // Hardcoded.
-    class __Singleton { // Hardcoded.
+if(!class_exists('__CLASS')){ // Hardcoded.
+    class __CLASS { // Hardcoded.
 
         // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -8159,16 +8103,35 @@ if(!class_exists('__Singleton')){ // Hardcoded.
         // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
         /**
-         * @return self
+         * @return string
          */
-        static public function get_instance(){
+        static public function get_class_name(){
+            return get_called_class();
+        }
+
+        /**
+         * @return object
+         */
+        static public function get_instance(...$args){
             $class_name = get_called_class();
-            $md5 = md5($class_name);
-            if(isset(self::$instances[$md5])){
-                return self::$instances[$md5];
+			$idx = md5($class_name);
+			if($args){
+				$idx .= '-' . __md5($args);
+			}
+            if(isset(self::$instances[$idx])){
+                return self::$instances[$idx];
             }
-            self::$instances[$md5] = new $class_name;
-            return self::$instances[$md5];
+            self::$instances[$idx] = new $class_name(...$args);
+            return self::$instances[$idx];
+        }
+
+        /**
+         * @return object
+         */
+        static public function new_instance(...$args){
+            $class_name = get_called_class();
+            $instance = new $class_name(...$args);
+            return $instance;
         }
 
         // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -8180,282 +8143,6 @@ if(!class_exists('__Singleton')){ // Hardcoded.
             if(is_callable([$this, 'loader'])){
                 call_user_func([$this, 'loader']);
             }
-        }
-
-        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-        /**
-         * @return string
-         */
-        public function get_name(){
-            return get_called_class();
-        }
-
-        /**
-         * @return string
-         */
-        public function prefix($str = ''){
-            $name = $this->get_name();
-            return __str_prefix($str, $name);
-        }
-
-        /**
-         * @return string
-         */
-        public function slug($str = ''){
-            $name = $this->get_name();
-            return __str_slug($str, $name);
-        }
-
-        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-        //
-        // Hooks
-        //
-        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-        /**
-         * @return string
-         */
-        public function add_action($hook_name = '', $callback = null, $priority = 10, $accepted_args = 1){
-            $hook_name = $this->prefix($hook_name);
-            return __on($hook_name, $callback, $priority, $accepted_args);
-        }
-
-        /**
-         * @return string
-         */
-        public function add_action_once($hook_name = '', $callback = null, $priority = 10, $accepted_args = 1){
-            $hook_name = $this->prefix($hook_name);
-            return __one($hook_name, $callback, $priority, $accepted_args);
-        }
-
-        /**
-         * @return string
-         */
-        public function add_filter($hook_name = '', $callback = null, $priority = 10, $accepted_args = 1){
-            $hook_name = $this->prefix($hook_name);
-            return __on($hook_name, $callback, $priority, $accepted_args);
-        }
-
-        /**
-         * @return string
-         */
-        public function add_filter_once($hook_name = '', $callback = null, $priority = 10, $accepted_args = 1){
-            $hook_name = $this->prefix($hook_name);
-            return __one($hook_name, $callback, $priority, $accepted_args);
-        }
-
-        /**
-         * @return mixed
-         */
-        public function apply_filters($hook_name = '', $value = null, ...$arg){
-            $hook_name = $this->prefix($hook_name);
-            return apply_filters($hook_name, $value, ...$arg);
-        }
-
-        /**
-         * @return bool
-         */
-        public function did_action($hook_name = ''){
-            $hook_name = $this->prefix($hook_name);
-            return did_action($hook_name);
-        }
-
-        /**
-         * @return bool
-         */
-        public function did_filter($hook_name = ''){
-            $hook_name = $this->prefix($hook_name);
-            return did_filter($hook_name);
-        }
-
-        /**
-         * @return void
-         */
-        public function do_action($hook_name = '', ...$arg){
-            $hook_name = $this->prefix($hook_name);
-            do_action($hook_name, ...$arg);
-        }
-
-        /**
-         * @return void
-         */
-        public function do_action_ref_array($hook_name = '', $args = []){
-            $hook_name = $this->prefix($hook_name);
-            do_action_ref_array($hook_name, $args);
-        }
-
-        /**
-         * @return bool
-         */
-        public function doing_action($hook_name = ''){
-            $hook_name = $this->prefix($hook_name);
-            return doing_filter($hook_name);
-        }
-
-        /**
-         * @return bool
-         */
-        public function doing_filter($hook_name = ''){
-            $hook_name = $this->prefix($hook_name);
-            return doing_filter($hook_name);
-        }
-
-        /**
-         * @return bool
-         */
-        public function has_action($hook_name = '', $callback = false){
-            $hook_name = $this->prefix($hook_name);
-            return has_filter($hook_name, $callback);
-        }
-
-        /**
-         * @return bool
-         */
-        public function has_filter($hook_name = '', $callback = false){
-            $hook_name = $this->prefix($hook_name);
-            return has_filter($hook_name, $callback);
-        }
-
-        /**
-         * @return bool
-         */
-        public function remove_action($hook_name = '', $callback = null, $priority = 10){
-            $hook_name = $this->prefix($hook_name);
-            return remove_filter($hook_name, $callback, $priority);
-        }
-
-        /**
-         * @return bool
-         */
-        public function remove_filter($hook_name = '', $callback = null, $priority = 10){
-            $hook_name = $this->prefix($hook_name);
-            return remove_filter($hook_name, $callback, $priority);
-        }
-
-        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-        //
-        // REST API
-        //
-        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-        /**
-         * @return bool
-         */
-        public function register_rest_route($route = '', $args = [], $override = false){
-            $route = $this->rest_route($route);
-            if(!$route){
-                return false;
-            }
-            return register_rest_route($this->rest_namespace(), $route, $args, $override);
-        }
-
-        /**
-         * @return string
-         */
-        public function rest_namespace($version = 0){
-            $version = __absint($version);
-            if($version < 1){
-                $version = 1;
-            }
-            $slug = $this->slug();
-            $namespace = $slug . '/v' . $version;
-            return $namespace;
-        }
-
-        /**
-         * @return string
-         */
-        public function rest_route($route = ''){
-            $route = sanitize_title($route);
-            if(!$route){
-                return '';
-            }
-            $slug = $this->slug();
-            $search = $slug . '-'; // With trailing dash.
-            if(__str_starts_with($route, $search)){
-                $route = str_replace($search, '', $route);
-            }
-            return $route;
-        }
-
-        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-        //
-        // Cache
-        //
-        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-        /**
-         * @return mixed
-         */
-        public function get_array_cache($array_key = '', $key = '', $default = null){
-            $array = (array) $this->get_cache($array_key, []);
-            return isset($array[$key]) ? $array[$key] : $default;
-        }
-
-        /**
-         * @return mixed
-         */
-        public function get_cache($key = '', $default = null){
-            $group = $this->prefix();
-            $value = wp_cache_get($key, $group, false, $found);
-            if($found){
-                return $value;
-            }
-            return $default;
-        }
-
-        /**
-         * @return bool
-         */
-        public function isset_array_cache($array_key = '', $key = ''){
-            $array = (array) $this->get_cache($array_key, []);
-            return isset($array[$key]);
-        }
-
-        /**
-         * @return bool
-         */
-        public function isset_cache($key = ''){
-            $group = $this->prefix();
-            $value = wp_cache_get($key, $group, false, $found);
-            return $found;
-        }
-
-        /**
-         * @return bool
-         */
-        public function set_array_cache($array_key = '', $key = '', $data = null){
-            $array = (array) $this->get_cache($array_key, []);
-            $array[$key] = $data;
-            return $this->set_cache($array_key, $array);
-        }
-
-        /**
-         * @return bool
-         */
-        public function set_cache($key = '', $data = null){
-            $group = $this->prefix();
-            return wp_cache_set($key, $data, $group);
-        }
-
-        /**
-         * @return bool
-         */
-        public function unset_array_cache($array_key = '', $key = ''){
-            $array = (array) $this->get_cache($array_key, []);
-            if(isset($array[$key])){
-                unset($array[$key]);
-            }
-            return $this->set_cache($array_key, $array);
-        }
-
-        /**
-         * @return bool
-         */
-        public function unset_cache($key = ''){
-            $group = $this->prefix();
-            return wp_cache_delete($key, $group);
         }
 
         // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

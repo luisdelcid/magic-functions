@@ -4,10 +4,6 @@
 //
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-if('undefined' === typeof(MAGIC_FUNCTIONS)){ // Hardcoded.
-    const MAGIC_FUNCTIONS = '5.4.23.1'; // Hardcoded.
-}
-
 /**
  * @return string
  */

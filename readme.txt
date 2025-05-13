@@ -5,7 +5,7 @@ Tags: magic, functions
 Tested up to: 6.8.1
 Requires at least: 5.6
 Requires PHP: 5.6
-Stable tag: 5.5.13.3
+Stable tag: 5.5.13.4
 License: GPL v2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -32,10 +32,6 @@ Create a new file named `magic-functions.php` and do your magic there or add the
 `});`
 
 Note that `after_magic_loaded` is the **first action hook available to themes**, instead of `after_setup_theme`.
-
-== Installation ==
-
-Upload the plugin to your blog and activate it.
 
 == Changelog ==
 

@@ -3,7 +3,7 @@
  * Plugin Name: Magic Functions
  * Plugin URI: https://magicfunctions.com
  * Description: A collection of magic functions for WordPress plugins and themes.
- * Version: 5.5.13.7
+ * Version: 5.5.27
  * Requires at least: 5.6
  * Requires PHP: 5.6
  * Author: Luis del Cid
@@ -28,12 +28,12 @@ if(!defined('ABSPATH')){
 }
 
 // Load PHP classes and functions.
-require_once(plugin_dir_path(__FILE__) . 'includes/autoload/magic-functions.php');
+require_once(plugin_dir_path(__FILE__) . 'inc/magic-functions.php');
 
 // Load JavaScript classes and functions.
-add_action('admin_enqueue_scripts', '__enqueue_plugin_dependencies', 5);
-add_action('login_enqueue_scripts', '__enqueue_plugin_dependencies', 5);
-add_action('wp_enqueue_scripts', '__enqueue_plugin_dependencies', 5);
+add_action('admin_enqueue_scripts', '__enqueue_dependencies', 5);
+add_action('login_enqueue_scripts', '__enqueue_dependencies', 5);
+add_action('wp_enqueue_scripts', '__enqueue_dependencies', 5);
 
 // Wait for the `plugins_loaded` action hook.
 add_action('plugins_loaded', function(){

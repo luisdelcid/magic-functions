@@ -6,80 +6,6 @@
 //
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-if(!function_exists('__enqueue_asset')){
-    /**
-     * This function MUST be called inside the 'admin_enqueue_scripts', 'login_enqueue_scripts' or 'wp_enqueue_scripts' action hooks.
-     *
-     * @return string|WP_Error
-     */
-    function __enqueue_asset($handle = '', $src = '', $deps = [], $ver = false, $args_media = true){
-        global $wp_version;
-        if(!doing_action('admin_enqueue_scripts') and !doing_action('login_enqueue_scripts') and !doing_action('wp_enqueue_scripts')){ // Too early or too late.
-            $error_msg = translate('Function %1$s was called <strong>incorrectly</strong>. %2$s %3$s');
-            $error_msg = sprintf($error_msg, __FUNCTION__, '', '');
-            $error_msg = trim($error_msg);
-            return __error($error_msg);
-        }
-        if(!$handle){
-            $error_msg = translate('The "%s" argument must be a non-empty string.');
-            $error_msg = sprintf($error_msg, 'handle');
-            return __error($error_msg);
-        }
-        $filename = __basename($src);
-        $mimes = [
-            'css' => 'text/css',
-            'js' => 'application/javascript',
-        ];
-        $filetype = wp_check_filetype($filename, $mimes);
-        if(!$filetype['ext']){
-            $error_msg = translate('Sorry, you are not allowed to upload this file type.');
-            return __error($error_msg);
-        }
-        if(!is_array($deps)){
-            $deps = (array) $deps;
-        }
-        if('text/css' === $filetype['type']){
-            if(is_string($args_media)){
-                $media = $args_media; // $media parameter.
-            } else {
-                $media = 'all'; // All.
-            }
-            wp_enqueue_style($handle, $src, $deps, $ver, $media);
-            return $handle;
-        }
-		$maybe_autoload = false;
-        $path = __url_to_dir($src);
-        if($path){ // This WordPress installation.
-            $plugin_dir_path = plugin_dir_path(dirname(dirname(__FILE__))); // Hardcoded.
-            if(!__str_starts_with($path, $plugin_dir_path)){ // Not this plugin.
-                $maybe_autoload = true;
-                $deps[] = __slug();
-            }
-        }
-        $l10n = [];
-        if(__is_associative_array($args_media)){
-            if(version_compare($wp_version, '6.3', '>=') and (isset($args_media['in_footer']) or isset($args_media['strategy']))){
-                $args = $args_media; // As of WordPress 6.3, the new $args parameter – that replaces/overloads the prior $in_footer parameter – can be used to specify a script loading strategy.
-            } else {
-                $l10n = $args_media;
-                $args = true; // In footer.
-            }
-        } else {
-            $args = (bool) $args_media; // $in_footer parameter.
-        }
-        wp_enqueue_script($handle, $src, $deps, $ver, $args);
-        $object_name = __canonicalize($handle);
-        if($maybe_autoload){
-            $data = "__get_instance('$object_name');"; // Hardcoded.
-            wp_add_inline_script($handle, $data);
-        }
-        if($l10n){
-            wp_localize_script($handle, $object_name . '_l10n', $l10n);
-        }
-        return $handle;
-    }
-}
-
 if(!function_exists('__get_cache')){
 	/**
 	 * @return mixed
@@ -105,7 +31,7 @@ if(!function_exists('__instance')){
             $error_msg = sprintf(translate('Missing parameter(s): %s'), '"' . $class . '"') . '.';
 	        return __error($error_msg);
 	    }
-	    if(!is_subclass_of($class, '__Class')){ // Hardcoded.
+	    if(!is_subclass_of($class, '__Base')){ // Hardcoded.
             $error_msg = sprintf(translate('Invalid parameter(s): %s'), '"' . $class . '"') . '.';
 	        return __error($error_msg);
 	    }
@@ -176,47 +102,6 @@ if(!function_exists('__unset_cache')){
         }
         return false;
 	}
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//
-// These functions’ access is marked private. This means they are not intended for use by plugin or theme developers, only in other core functions.
-//
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-if(!function_exists('__context_enqueue')){
-    /**
-     * This function MUST be called inside the '{$context}_enqueue_scripts' action hook.
-     *
-     * @return string|WP_Error
-     */
-    function __context_enqueue($context = 'wp', $handle = '', $src = '', $deps = [], $ver = false, $args_media = true){
-        if(doing_action($context . '_enqueue_scripts')){ // Just in time.
-            return __enqueue_asset($handle, $src, $deps, $ver, $args_media);
-        }
-        if(did_action($context . '_enqueue_scripts')){ // Too late.
-            $error_msg = translate('Function %1$s was called <strong>incorrectly</strong>. %2$s %3$s');
-            $error_msg = sprintf($error_msg, __FUNCTION__, '', '');
-            $error_msg = trim($error_msg);
-            return __error($error_msg);
-        }
-        if(!$handle){
-            $error_msg = translate('The "%s" argument must be a non-empty string.');
-            $error_msg = sprintf($error_msg, 'handle');
-            return __error($error_msg);
-        }
-        $asset = [
-            'args_media' => $args_media,
-            'deps' => $deps,
-            'handle' => $handle,
-            'src' => $src,
-            'ver' => $ver,
-        ];
-        $md5 = __md5($asset);
-        __set_array_cache($context . '_assets', $md5, $asset);
-        __add_action_once($context . '_enqueue_scripts', '__maybe_enqueue_' . $context . '_assets'); // Hardcoded.
-        return $handle;
-    }
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -770,7 +655,8 @@ if(!function_exists('__serialize_closure')){
 	 * @return string|WP_Error
 	 */
 	function __serialize_closure($closure = null){
-		$lib = __use_serializable_closure();
+		//$lib = __use_serializable_closure();
+        $lib = __use_closure();
 		if(is_wp_error($lib)){
 			return $lib;
 		}
@@ -783,7 +669,8 @@ if(!function_exists('__unserialize_closure')){
 	 * @return mixed|WP_Error
 	 */
 	function __unserialize_closure($closure = null){
-		$lib = __use_serializable_closure();
+		//$lib = __use_serializable_closure();
+		$lib = __use_closure();
 		if(is_wp_error($lib)){
 			return $lib;
 		}
@@ -797,11 +684,27 @@ if(!function_exists('__unserialize_closure')){
 //
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+if(!function_exists('__use_closure')){
+	/**
+	 * @return string|WP_Error
+	 */
+	function __use_closure($ver = '4.3.1'){
+        return __use([
+            'autoload' => 'autoload.php',
+            'owner' => 'opis',
+            'repo' => 'closure',
+            'tag' => $ver,
+            //'release' => $ver,
+            'validation' => 'Opis\Closure\Serializer',
+        ]);
+	}
+}
+
 if(!function_exists('__use_serializable_closure')){
 	/**
 	 * @return string|WP_Error
 	 */
-	function __use_serializable_closure($ver = '4.3.1'){
+	/*function __use_serializable_closure($ver = '4.3.1'){
 		$key = 'serializable-closure-' . $ver;
 		if(__isset_cache($key)){
 			return (string) __get_cache($key, '');
@@ -824,7 +727,7 @@ if(!function_exists('__use_serializable_closure')){
 		}
 		__set_cache($key, $dir);
 		return $dir;
-	}
+	}*/
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -940,7 +843,15 @@ if(!function_exists('__use_jshrink')){
 	 * @return string|WP_Error
 	 */
 	function __use_jshrink($ver = '1.7.0'){
-		$key = 'jshrink-' . $ver;
+        return __use([
+            'autoload' => 'src/JShrink/Minifier.php',
+            'owner' => 'tedious',
+            'repo' => 'JShrink',
+            'tag' => 'v' . $ver,
+            'release' => $ver,
+            'validation' => 'JShrink\Minifier',
+        ]);
+		/*$key = 'jshrink-' . $ver;
 	    if(__isset_cache($key)){
 	        return (string) __get_cache($key, '');
 	    }
@@ -961,7 +872,7 @@ if(!function_exists('__use_jshrink')){
 			return __error(sprintf(translate('Missing parameter(s): %s'), $class) . '.');
 		}
 		__set_cache($key, $dir);
-		return $dir;
+		return $dir;*/
 	}
 }
 
@@ -969,8 +880,16 @@ if(!function_exists('__use_lessphp')){
 	/**
 	 * @return string|WP_Error
 	 */
-	function __use_lessphp($ver = '5.2.2'){
-		$key = 'lessphp-' . $ver;
+	function __use_lessphp($ver = '5.3.1'){
+        return __use([
+            'autoload' => 'lib/Less/Autoloader.php',
+            'owner' => 'wikimedia',
+            'repo' => 'less.php',
+            'tag' => 'v' . $ver,
+            'release' => $ver,
+            'validation' => 'Less_Autoloader',
+        ]);
+		/*$key = 'lessphp-' . $ver;
 	    if(__isset_cache($key)){
 	        return (string) __get_cache($key, '');
 	    }
@@ -991,7 +910,7 @@ if(!function_exists('__use_lessphp')){
 			return __error(sprintf(translate('Missing parameter(s): %s'), $class) . '.');
 		}
 		__set_cache($key, $dir);
-		return $dir;
+		return $dir;*/
 	}
 }
 
@@ -2776,22 +2695,90 @@ if(!function_exists('__reflector_context')){
 //
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-if(!function_exists('__admin_enqueue')){
+if(!function_exists('__enqueue_asset')){
     /**
+     * This function MUST be called inside the 'admin_enqueue_scripts', 'login_enqueue_scripts' or 'wp_enqueue_scripts' action hooks.
+     *
      * @return string|WP_Error
      */
-    function __admin_enqueue($handle = '', $src = '', $deps = [], $ver = false, $args_media = true){
-        return __context_enqueue('admin', $handle, $src, $deps, $ver, $args_media);
+    function __enqueue_asset($handle = '', $src = '', $deps = [], $ver = false, $args_media = true){
+        global $wp_version;
+        if(!doing_action('admin_enqueue_scripts') and !doing_action('login_enqueue_scripts') and !doing_action('wp_enqueue_scripts')){ // Too early or too late.
+            $error_msg = translate('Function %1$s was called <strong>incorrectly</strong>. %2$s %3$s');
+            $error_msg = sprintf($error_msg, __FUNCTION__, '', '');
+            $error_msg = trim($error_msg);
+            return __error($error_msg);
+        }
+        if(!$handle){
+            $error_msg = translate('The "%s" argument must be a non-empty string.');
+            $error_msg = sprintf($error_msg, 'handle');
+            return __error($error_msg);
+        }
+        $filename = __basename($src);
+        $mimes = [
+            'css' => 'text/css',
+            'js' => 'application/javascript',
+        ];
+        $filetype = wp_check_filetype($filename, $mimes);
+        if(!$filetype['ext']){
+            $error_msg = translate('Sorry, you are not allowed to upload this file type.');
+            return __error($error_msg);
+        }
+        if(!is_array($deps)){
+            $deps = (array) $deps;
+        }
+        if('text/css' === $filetype['type']){
+            if(is_string($args_media)){
+                $media = $args_media; // $media parameter.
+            } else {
+                $media = 'all'; // All.
+            }
+            wp_enqueue_style($handle, $src, $deps, $ver, $media);
+            return $handle;
+        }
+        $path = __url_to_dir($src);
+        if($path){ // This WordPress installation.
+            if($path !== __dependent_file()){
+                $deps[] = __slug();
+            }
+        }
+        $l10n = [];
+        if(__is_associative_array($args_media)){
+            if(version_compare($wp_version, '6.3', '>=') and (isset($args_media['in_footer']) or isset($args_media['strategy']))){
+                $args = $args_media; // As of WordPress 6.3, the new $args parameter – that replaces/overloads the prior $in_footer parameter – can be used to specify a script loading strategy.
+            } else {
+                $l10n = $args_media;
+                $args = true; // In footer.
+            }
+        } else {
+            $args = (bool) $args_media; // $in_footer parameter.
+        }
+        wp_enqueue_script($handle, $src, $deps, $ver, $args);
+        if($l10n){
+            $object_name = __canonicalize($handle);
+            wp_localize_script($handle, $object_name . '_l10n', $l10n);
+        }
+        return $handle;
     }
 }
 
-if(!function_exists('__enqueue')){
+if(!function_exists('__initialize')){
     /**
-     * @return string|WP_Error
+     * This function MUST be called inside the 'admin_enqueue_scripts', 'login_enqueue_scripts' or 'wp_enqueue_scripts' action hooks.
+     *
+     * @return bool|WP_Error
      */
-    function __enqueue($handle = '', $src = '', $deps = [], $ver = false, $args_media = true){
-        return __context_enqueue('wp', $handle, $src, $deps, $ver, $args_media);
-    }
+	function __initialize($handle = ''){
+        if(!doing_action('admin_enqueue_scripts') and !doing_action('login_enqueue_scripts') and !doing_action('wp_enqueue_scripts')){ // Too early or too late.
+            $error_msg = translate('Function %1$s was called <strong>incorrectly</strong>. %2$s %3$s');
+            $error_msg = sprintf($error_msg, __FUNCTION__, '', '');
+            $error_msg = trim($error_msg);
+            return __error($error_msg);
+        }
+        $object_name = __canonicalize($handle);
+        $data = "__get_instance('$object_name');"; // Hardcoded.
+        return wp_add_inline_script($handle, $data);
+	}
 }
 
 if(!function_exists('__local_admin_enqueue')){
@@ -2890,48 +2877,30 @@ if(!function_exists('__localize')){
     }
 }
 
-if(!function_exists('__login_enqueue')){
-    /**
-     * @return string|WP_Error
-     */
-    function __login_enqueue($handle = '', $src = '', $deps = [], $ver = false, $args_media = true){
-        return __context_enqueue('login', $handle, $src, $deps, $ver, $args_media);
-    }
-}
-
-if(!function_exists('__omni_enqueue')){
-    /**
-     * @return string|WP_Error
-     */
-    function __omni_enqueue($handle = '', $src = '', $deps = [], $ver = false, $args_media = true){
-        if(!doing_action('admin_enqueue_scripts') and !doing_action('login_enqueue_scripts') and !doing_action('wp_enqueue_scripts')){
-            if(did_action('admin_enqueue_scripts') or did_action('login_enqueue_scripts') or did_action('wp_enqueue_scripts')){
-                $error_msg = translate('Function %1$s was called <strong>incorrectly</strong>. %2$s %3$s');
-                $error_msg = sprintf($error_msg, __FUNCTION__, '', '');
-                $error_msg = trim($error_msg);
-                return __error($error_msg);
-            }
-        }
-        __context_enqueue('admin', $handle, $src, $deps, $ver, $args_media);
-        __context_enqueue('login', $handle, $src, $deps, $ver, $args_media);
-        __context_enqueue('wp', $handle, $src, $deps, $ver, $args_media);
-        return $handle;
-    }
-}
-
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
 // These functions’ access is marked private. This means they are not intended for use by plugin or theme developers, only in other core functions.
 //
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-if(!function_exists('__enqueue_plugin_dependencies')){
+if(!function_exists('__dependent_file')){
+	/**
+	 * @return string
+	 */
+	function __dependent_file(){
+        $handle = __slug();
+		$file = plugin_dir_path(__FILE__) . $handle . '.js'; // Hardcoded.
+		return $file;
+	}
+}
+
+if(!function_exists('__enqueue_dependencies')){
 	/**
 	 * @return void
 	 */
-	function __enqueue_plugin_dependencies(){
+	function __enqueue_dependencies(){
 		$handle = __slug();
-		$file = plugin_dir_path(__FILE__) . $handle . '.js';
+		$file = __dependent_file();
 		if(!file_exists($file)){
             return;
         }
@@ -2945,66 +2914,6 @@ if(!function_exists('__enqueue_plugin_dependencies')){
         ];
         __local_enqueue_asset($handle, $file, $deps, $l10n);
 	}
-}
-
-if(!function_exists('__maybe_enqueue_admin_assets')){
-    /**
-	 * This function MUST be called inside the 'admin_enqueue_scripts' action hook.
-	 *
-	 * @return void
-	 */
-    function __maybe_enqueue_admin_assets(){
-        if(!doing_action('admin_enqueue_scripts')){ // Too early or too late.
-	        return;
-	    }
-        $assets = (array) __get_cache('admin_assets', []);
-        if(!$assets){
-            return;
-        }
-        foreach($assets as $md5 => $asset){
-            __enqueue_asset($asset['handle'], $asset['src'], $asset['deps'], $asset['ver'], $asset['args_media']);
-        }
-    }
-}
-
-if(!function_exists('__maybe_enqueue_wp_assets')){
-    /**
-	 * This function MUST be called inside the 'wp_enqueue_scripts' action hook.
-	 *
-	 * @return void
-	 */
-    function __maybe_enqueue_wp_assets(){
-        if(!doing_action('wp_enqueue_scripts')){ // Too early or too late.
-	        return;
-	    }
-        $assets = (array) __get_cache('wp_assets', []);
-        if(!$assets){
-            return;
-        }
-        foreach($assets as $md5 => $asset){
-            __enqueue_asset($asset['handle'], $asset['src'], $asset['deps'], $asset['ver'], $asset['args_media']);
-        }
-    }
-}
-
-if(!function_exists('__maybe_enqueue_login_assets')){
-    /**
-	 * This function MUST be called inside the 'login_enqueue_scripts' action hook.
-	 *
-	 * @return void
-	 */
-    function __maybe_enqueue_login_assets(){
-        if(!doing_action('login_enqueue_scripts')){ // Too early or too late.
-	        return;
-	    }
-        $assets = (array) __get_cache('login_assets', []);
-        if(!$assets){
-            return;
-        }
-        foreach($assets as $md5 => $asset){
-            __enqueue_asset($asset['handle'], $asset['src'], $asset['deps'], $asset['ver'], $asset['args_media']);
-        }
-    }
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -3686,6 +3595,86 @@ if(!function_exists('__github_api_token_exists')){
         $key = 'github_api_token';
 		return __isset_cache($key);
     }
+}
+
+if(!function_exists('__use')){
+	/**
+	 * @return string|WP_Error
+	 */
+	function __use($args = []){
+        $defaults = [
+            'autoload' => '',
+            'owner' => '',
+            'release' => '',
+            'repo' => '',
+            'tag' => '',
+            'validation' => '',
+        ];
+        $args = wp_parse_args($args, $defaults);
+        $missing = [];
+        if(!$args['owner']){
+            $missing[] = 'owner';
+        }
+        if(!$args['repo']){
+            $missing[] = 'repo';
+        }
+        if(!$args['tag']){
+            $missing[] = 'tag';
+        }
+        if($missing){
+            $message = sprintf(translate('Missing parameter(s): %s'), __implode_and($missing)) . '.';
+            return __error($message);
+        }
+        if(!$args['release']){
+            $args['release'] = $args['tag'];
+        }
+        $key = 'use-' . $args['owner'] . '/' . $args['repo'] . '-' . $args['release'];
+		if(__isset_cache($key)){
+			return (string) __get_cache($key, '');
+		}
+        $url = 'https://github.com/' . $args['owner'] . '/' . $args['repo'] . '/archive/refs/tags/' . $args['tag'] . '.zip';
+        $expected_dir = $args['repo'] . '-' . $args['release'];
+        $dir = __remote_lib($url, $expected_dir);
+        if(is_wp_error($dir)){
+            return $dir;
+        }
+        if($args['validation']){
+            $valid = true;
+            foreach((array) $args['validation'] as $class){
+                if(class_exists($class)){
+                    $valid = false;
+                    break;
+                }
+            }
+            if(!$valid){
+                __set_cache($key, $dir);
+        		return $dir;
+            }
+        }
+        if($args['autoload']){
+            foreach((array) $args['autoload'] as $basename){
+                $basename = ltrim($basename, '/');
+                $file = $dir . '/' . $basename;
+        		if(file_exists($file)){
+        			require_once($file);
+        		}
+            }
+        }
+        if($args['validation']){
+            $missing = [];
+            foreach((array) $args['validation'] as $class){
+                if(!class_exists($class)){
+                    $missing[] = $class;
+                }
+            }
+            if($missing){
+                $message = sprintf(translate('Missing parameter(s): %s'), __implode_and($missing)) . '.';
+                return __error($message);
+            }
+        }
+		__set_cache($key, $dir);
+		return $dir;
+	}
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -4789,79 +4778,68 @@ if(!function_exists('__is_name')){
 
 if(!function_exists('__is_post_edit')){
     /**
-     * @return string
+     * @return int
      */
     function __is_post_edit($post_type = ''){
         global $hook_suffix;
         if(!is_admin()){
-            return '';
+            return 0;
         }
         if('post.php' !== $hook_suffix){
-            return '';
+            return 0;
         }
         if(!isset($_GET['action'], $_GET['post'])){
-			return '';
+			return 0;
 		}
         if('edit' !== $_GET['action']){
-			return;
+			return 0;
 		}
+        $post_id = (int) $_GET['post'];
         if(!$post_type){
-            return get_post_type($_GET['post']);
+            return $post_id;
         }
-        if($post_type !== get_post_type($_GET['post'])){
-			return '';
+        if($post_type !== get_post_type($post_id)){
+			return 0;
 		}
-        return $post_type;
+        return $post_id;
     }
 }
 
 if(!function_exists('__is_post_list')){
     /**
-     * @return string
+     * @return bool
      */
     function __is_post_list($post_type = ''){
         global $hook_suffix;
         if(!is_admin()){
-            return '';
+            return false;
         }
         if('edit.php' !== $hook_suffix){
-            return '';
+            return false;
         }
-        if(!isset($_GET['post_type'])){
-			return '';
-		}
         if(!$post_type){
-            return $_GET['post_type'];
+            return true;
         }
-        if($post_type !== $_GET['post_type']){
-			return '';
-		}
-        return $post_type;
+        return ($post_type === (isset($_GET['post_type']) ? $_GET['post_type'] : 'post'));
     }
 }
 
 if(!function_exists('__is_post_new')){
     /**
-     * @return string
+     * @return bool
      */
     function __is_post_new($post_type = ''){
         global $hook_suffix;
         if(!is_admin()){
-            return '';
+            return false;
         }
         if('post-new.php' !== $hook_suffix){
-            return '';
+            return false;
         }
-        if(!isset($_GET['post_type'])){
-			return '';
-		}
         if(!$post_type){
-            return $_GET['post_type'];
+            return true;
         }
-        if($post_type !== $_GET['post_type']){
-			return '';
-		}
-        return $post_type;
+        return ($post_type === (isset($_GET['post_type']) ? $_GET['post_type'] : 'post'));
     }
 }
 
@@ -5350,7 +5328,15 @@ if(!function_exists('__use_simple_html_dom')){
 	 * @return bool|WP_Error
 	 */
 	function __use_simple_html_dom($ver = '1.9.1'){
-		$key = 'simplehtmldom-' . $ver;
+        return __use([
+            'autoload' => 'simple_html_dom.php',
+            'owner' => 'simplehtmldom',
+            'repo' => 'simplehtmldom',
+            'tag' => $ver,
+            //'release' => $ver,
+            'validation' => 'simple_html_dom',
+        ]);
+		/*$key = 'simplehtmldom-' . $ver;
 		if(__isset_cache($key)){
 			return (string) __get_cache($key, '');
 		}
@@ -5371,62 +5357,7 @@ if(!function_exists('__use_simple_html_dom')){
 			return __error(sprintf(translate('Missing parameter(s): %s'), $class) . '.');
 		}
 		__set_cache($key, $dir);
-		return $dir;
-	}
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//
-// PHP_XLSXWriter
-//
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-if(!function_exists('__xlsx_writer')){
-	/**
-	 * @return XLSXWriter|WP_Error
-	 */
-	function __xlsx_writer(){
-		$lib = __use_xlsxwriter();
-		if(is_wp_error($lib)){
-			return $lib;
-		}
-		return new \XLSXWriter;
-	}
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//
-// These functions’ access is marked private. This means they are not intended for use by plugin or theme developers, only in other core functions.
-//
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-if(!function_exists('__use_xlsxwriter')){
-	/**
-	 * @return string|WP_Error
-	 */
-	function __use_xlsxwriter($ver = '0.39'){
-		$key = 'xlsxwriter-' . $ver;
-	    if(__isset_cache($key)){
-	        return (string) __get_cache($key, '');
-	    }
-		$class = 'XLSXWriter';
-		if(class_exists($class)){
-	        return ''; // Already handled outside of this function.
-	    }
-		$dir = __remote_lib('https://github.com/mk-j/PHP_XLSXWriter/archive/refs/tags/' . $ver . '.zip', 'PHP_XLSXWriter-' . $ver);
-		if(is_wp_error($dir)){
-			return $dir;
-		}
-		$file = $dir . '/xlsxwriter.class.php';
-		if(!file_exists($file)){
-			return __error(translate('File doesn&#8217;t exist?'), $file);
-		}
-		require_once($file);
-		if(!class_exists($class)){
-			return __error(sprintf(translate('Missing parameter(s): %s'), $class) . '.');
-		}
-		__set_cache($key, $dir);
-		return $dir;
+		return $dir;*/
 	}
 }
 
@@ -5438,7 +5369,7 @@ if(!function_exists('__use_xlsxwriter')){
 
 if(!function_exists('__build_update_checker')){
 	/**
-	 * @return YahnisElsts\PluginUpdateChecker\v5p4\Vcs\BaseChecker|WP_Error
+	 * @return Plugin\UpdateChecker|Theme\UpdateChecker|Vcs\BaseChecker|WP_Error
 	 */
 	function __build_update_checker(...$args){
 		$md5 = __md5($args);
@@ -5498,8 +5429,16 @@ if(!function_exists('__use_plugin_update_checker')){
 	/**
 	 * @return string|WP_Error
 	 */
-	function __use_plugin_update_checker($ver = '5.5'){
-		$key = 'plugin-update-checker-' . $ver;
+	function __use_plugin_update_checker($ver = '5.6'){
+        return __use([
+            'autoload' => 'plugin-update-checker.php',
+            'owner' => 'YahnisElsts',
+            'repo' => 'plugin-update-checker',
+            'tag' => 'v' . $ver,
+            'release' => $ver,
+            'validation' => 'YahnisElsts\PluginUpdateChecker\v5\PucFactory',
+        ]);
+		/*$key = 'plugin-update-checker-' . $ver;
 	    if(__isset_cache($key)){
 	        return (string) __get_cache($key, '');
 	    }
@@ -5520,7 +5459,7 @@ if(!function_exists('__use_plugin_update_checker')){
 			return __error(sprintf(translate('Missing parameter(s): %s'), $class) . '.');
 		}
 		__set_cache($key, $dir);
-		return $dir;
+		return $dir;*/
 	}
 }
 
@@ -6763,7 +6702,8 @@ if(!function_exists('__remote_lib')){
 	    if(__isset_cache($key)){
 	        return (string) __get_cache($key, '');
 	    }
-		$download_dir = __download_dir();
+		//$download_dir = __download_dir();
+        $download_dir = __dir('lib');
 		if(is_wp_error($download_dir)){
 			return $download_dir;
 		}
@@ -6771,7 +6711,8 @@ if(!function_exists('__remote_lib')){
 		if(is_wp_error($fs)){
 			return $fs;
 		}
-		$name = 'remote-lib-' . $key;
+		//$name = 'remote-lib-' . $key;
+        $name = __md5_to_uuid4($key);
 		$to = $download_dir . '/' . $name;
 		if(empty($expected_dir)){
 			$expected_dir = $to;
@@ -6797,7 +6738,7 @@ if(!function_exists('__remote_lib')){
 		}
 		if(!$fs->dirlist($expected_dir, false)){
 			$fs->rmdir($to, true);
-			return __error(translate('Destination directory for file streaming does not exist or is not writable.'));
+			return __error(translate('Destination directory for file streaming does not exist or is not writable.'), $expected_dir);
 		}
 	    __set_cache($key, $expected_dir);
 		return $expected_dir;
@@ -7531,7 +7472,15 @@ if(!function_exists('__use_tgm_plugin_activation')){
 	 * @return bool|WP_Error
 	 */
 	function __use_tgm_plugin_activation($ver = '2.6.1'){
-		$key = 'tgm-plugin-activation-' . $ver;
+        return __use([
+            'autoload' => 'class-tgm-plugin-activation.php',
+            'owner' => 'TGMPA',
+            'repo' => 'TGM-Plugin-Activation',
+            'tag' => $ver,
+            //'release' => $ver,
+            'validation' => 'TGM_Plugin_Activation',
+        ]);
+		/*$key = 'tgm-plugin-activation-' . $ver;
 		if(__isset_cache($key)){
 			return (string) __get_cache($key, '');
 		}
@@ -7552,7 +7501,7 @@ if(!function_exists('__use_tgm_plugin_activation')){
 			return __error(sprintf(translate('Missing parameter(s): %s'), $class) . '.');
 		}
 		__set_cache($key, $dir);
-		return $dir;
+		return $dir;*/
 	}
 }
 
@@ -8091,6 +8040,82 @@ if(!function_exists('__zoom_request')){
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
+// Use
+//
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+if(!function_exists('__use_font_awesome')){
+	/**
+	 * @return string|WP_Error
+	 */
+	function __use_font_awesome($ver = '6.7.2'){
+        return __use([
+            'owner' => 'FortAwesome',
+            'repo' => 'Font-Awesome',
+            'tag' => $ver,
+        ]);
+	}
+}
+
+if(!function_exists('__enqueue_font_awesome')){
+	/**
+     * This function MUST be called inside the 'admin_enqueue_scripts', 'login_enqueue_scripts' or 'wp_enqueue_scripts' action hooks.
+     *
+     * @return string|WP_Error
+     */
+	function __enqueue_font_awesome($deps = [], $version = '6.7.2'){
+        $dir = __use_font_awesome($version);
+        if(is_wp_error($dir)){
+            return $dir;
+        }
+        $base_path = __dir_to_url($dir) . '/css';
+        $handle = __enqueue_asset('font-awesome', $base_path . '/fontawesome.min.css', $deps, $version);
+        return $handle;
+	}
+}
+
+if(!function_exists('__use_ace')){
+	/**
+	 * @return string|WP_Error
+	 */
+	function __use_ace($ver = '1.5.0'){
+        return __use([
+            'owner' => 'ajaxorg',
+            'repo' => 'ace-builds',
+            'tag' => 'v' . $ver,
+            'release' => $ver,
+        ]);
+	}
+}
+
+if(!function_exists('__enqueue_ace')){
+	/**
+     * This function MUST be called inside the 'admin_enqueue_scripts', 'login_enqueue_scripts' or 'wp_enqueue_scripts' action hooks.
+     *
+     * @return string|WP_Error
+     */
+	function __enqueue_ace($deps = [], $version = '1.5.0'){
+        $dir = __use_ace($version);
+        if(is_wp_error($dir)){
+            return $dir;
+        }
+        $base_path = __dir_to_url($dir) . '/src-min';
+        $handle = __enqueue_asset('ace', $base_path . '/ace.js', $deps, $version);
+        if(is_wp_error($handle)){
+            return $handle;
+        }
+		$handle = __enqueue_asset('ace-language-tools', $base_path . '/ext-language_tools.js', [$handle], $version);
+        if(is_wp_error($handle)){
+            return $handle;
+        }
+        $data = "if(!_.isUndefined(ace)){ ace.config.set('basePath', '$base_path'); ace.require('ace/ext/language_tools'); }";
+        wp_add_inline_script($handle, $data);
+        return $handle;
+	}
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
 // Classes
 //
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -8113,8 +8138,8 @@ if(!function_exists('__new_instance')){
 	}
 }
 
-if(!class_exists('__CLASS')){ // Hardcoded.
-    class __CLASS { // Hardcoded.
+if(!class_exists('__Base')){ // Hardcoded.
+    class __Base { // Hardcoded.
 
         // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

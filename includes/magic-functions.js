@@ -24,19 +24,22 @@ function __document_has_visibility_event(){
 }
 
 /**
- * @return __Singleton|null // Hardcoded.
+ * @return object|null
  */
-function __get_instance(class_name = ''){
+function __instance(class_name = '', singleton = false){
     if(!class_name){
         return null;
     }
     if(!_.isFunction(window[class_name])){
         return null;
     }
-    if(!__is_subclass_of(window[class_name], '__singleton')){ // Hardcoded.
+    if(!__is_subclass_of(window[class_name], '__base')){ // Hardcoded.
         return null;
     }
-    return window[class_name].get_instance();
+    if(singleton){
+        return window[class_name].get_instance();
+    }
+    return window[class_name].new_instance();
 }
 
 /**
@@ -1643,11 +1646,25 @@ function __utf8_encode(argString){
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
-// Singleton
+// Classes
 //
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-var __singleton = class __Singleton { // Hardcoded.
+/**
+ * @return object|null
+ */
+function __get_instance(class_name = ''){
+    return __instance(class_name, true);
+}
+
+/**
+ * @return object|null
+ */
+function __new_instance(class_name = ''){
+    return __instance(class_name, false);
+}
+
+var __base = class __Base { // Hardcoded.
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -1657,15 +1674,23 @@ var __singleton = class __Singleton { // Hardcoded.
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	/**
-	 * @return this
+	 * @return object
 	 */
 	static get_instance(){
         var parent = Object.getPrototypeOf(this);
         if(_.isUndefined(parent.#instances[this.name])){
             parent.#is_internal_constructing = true;
-		    parent.#instances[this.name] = new this;
+		    parent.#instances[this.name] = new this();
         }
 		return parent.#instances[this.name];
+	}
+
+	/**
+	 * @return object
+	 */
+	static new_instance(){
+        var instance = new this();
+		return instance;
 	}
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1697,7 +1722,7 @@ var __singleton = class __Singleton { // Hardcoded.
 	/**
 	 * @return string
 	 */
-	get_name(){
+	get_class_name(){
         if(_.isUndefined(this.constructor_name)){
             return '';
         }
@@ -1708,7 +1733,7 @@ var __singleton = class __Singleton { // Hardcoded.
 	 * @return string
 	 */
 	prefix(str = ''){
-		var name = this.get_name();
+		var name = this.get_class_name();
         return __str_prefix(str, name);
 	}
 
@@ -1716,160 +1741,8 @@ var __singleton = class __Singleton { // Hardcoded.
 	 * @return string
 	 */
 	slug(str = ''){
-		var name = this.get_name();
+		var name = this.get_class_name();
         return __str_slug(str, name);
-	}
-
-    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    //
-    // Hooks
-    //
-    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-    /**
-     * @return void
-     */
-    add_action(hook_name = '', callback = null, priority = 10){
-        hook_name = this.prefix(hook_name);
-        wp.hooks.addAction(hook_name, __namespace(), callback, priority);
-    }
-
-    /**
-     * @return void
-     */
-    add_filter(hook_name = '', callback = null, priority = 10){
-        hook_name = this.prefix(hook_name);
-        wp.hooks.addFilter(hook_name, __namespace(), callback, priority);
-    }
-
-    /**
-     * @return mixed
-     */
-    apply_filters(hook_name = '', value = null, ...arg){
-        hook_name = this.prefix(hook_name);
-        return wp.hooks.applyFilters(hook_name, value, ...arg);
-    }
-
-    /**
-     * @return int|void
-     */
-    did_action(hook_name = ''){
-        hook_name = this.prefix(hook_name);
-        return wp.hooks.didAction(hook_name);
-    }
-
-    /**
-     * @return int|void
-     */
-    did_filter(hook_name = ''){
-        hook_name = this.prefix(hook_name);
-        return wp.hooks.didFilter(hook_name);
-    }
-
-    /**
-     * @return void
-     */
-    do_action(hook_name = '', ...arg){
-        hook_name = this.prefix(hook_name);
-        wp.hooks.doAction(hook_name, ...arg);
-    }
-
-    /**
-     * @return void
-     */
-    doing_action(hook_name = ''){
-        hook_name = this.prefix(hook_name);
-        wp.hooks.doingAction(hook_name);
-    }
-
-    /**
-     * @return void
-     */
-    doing_filter(hook_name = ''){
-        hook_name = this.prefix(hook_name);
-        wp.hooks.doingFilter(hook_name);
-    }
-
-    /**
-     * @return bool
-     */
-    has_action(hook_name = ''){
-        hook_name = this.prefix(hook_name);
-        return wp.hooks.hasAction(hook_name, __namespace());
-    }
-
-    /**
-     * @return bool
-     */
-    has_filter(hook_name = ''){
-        hook_name = this.prefix(hook_name);
-        return wp.hooks.hasFilter(hook_name, __namespace());
-    }
-
-    /**
-     * @return int|void
-     */
-    remove_action(hook_name = ''){
-        hook_name = this.prefix(hook_name);
-        return wp.hooks.removeAction(hook_name, __namespace());
-    }
-
-    /**
-     * @return int|void
-     */
-    remove_filter(hook_name = ''){
-        hook_name = this.prefix(hook_name);
-        return wp.hooks.removeFilter(hook_name, __namespace());
-    }
-
-    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    //
-    // REST API
-    //
-    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-	/**
-	 * @return string
-	 */
-	rest_namespace(version = 1){
-        var namespace = '',
-            slug = '';
-        version = __absint(version);
-        if(version < 1){
-            version = 1;
-        }
-        slug = this.slug();
-        namespace = slug + '/v' + version;
-        return namespace;
-	}
-
-	/**
-	 * @return string
-	 */
-	rest_route(route = ''){
-        var search = '',
-            slug = '';
-        route = __sanitize_title(route);
-        if(!route){
-            return '';
-        }
-        slug = this.slug();
-        search = slug + '-'; // With trailing dash.
-        if(route.startsWith(search)){
-            route = route.replace(search, '');
-        }
-        return route;
-	}
-
-	/**
-	 * @return string
-	 */
-	rest_url(route = '', version = 1){
-        route = this.rest_route(route);
-        if(!route){
-            return '';
-        }
-        return (wpApiSettings.root + this.rest_namespace(version) + '/' + route);
 	}
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

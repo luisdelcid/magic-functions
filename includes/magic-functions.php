@@ -8118,7 +8118,7 @@ if(!class_exists('__Base')){ // Hardcoded.
         /**
          * @return string
          */
-        public function __prefix($str = ''){
+        public function str_prefix($str = ''){
             $name = $this->get_class_name();
             return __str_prefix($str, $name);
         }
@@ -8126,7 +8126,7 @@ if(!class_exists('__Base')){ // Hardcoded.
         /**
          * @return string
          */
-        public function __slug($str = ''){
+        public function str_slug($str = ''){
             $name = $this->get_class_name();
             return __str_slug($str, $name);
         }

@@ -1732,7 +1732,7 @@ var __base = class __Base { // Hardcoded.
 	/**
 	 * @return string
 	 */
-	prefix(str = ''){
+	str_prefix(str = ''){
 		var name = this.get_class_name();
         return __str_prefix(str, name);
 	}
@@ -1740,7 +1740,7 @@ var __base = class __Base { // Hardcoded.
 	/**
 	 * @return string
 	 */
-	slug(str = ''){
+	str_slug(str = ''){
 		var name = this.get_class_name();
         return __str_slug(str, name);
 	}

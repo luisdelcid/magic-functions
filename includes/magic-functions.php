@@ -3554,16 +3554,32 @@ if(!function_exists('__github_use')){
             $message = sprintf(translate('Missing parameter(s): %s'), __implode_and($missing)) . '.';
             return __error($message);
         }
-        $key = 'use-' . $args['owner'] . '/' . $args['repo'] . '-' . $args['tag'];
+        //$key = 'github-use-' . $args['owner'] . '/' . $args['repo'] . '-' . $args['tag'];
+        $key = 'github-use-' . md5($args['owner'] . '/' . $args['repo'] . '-' . $args['tag']);
 		if(__isset_cache($key)){
 			return (string) __get_cache($key, '');
 		}
+        $transient = get_transient($key);
+        if($transient !== false){
+            return $transient;
+        }
         $url = 'https://github.com/' . $args['owner'] . '/' . $args['repo'] . '/archive/refs/tags/' . $args['tag'] . '.zip';
 		if(!$args['expected_dir']){
             $args['expected_dir'] = $args['repo'] . '-' . $args['tag'];
         }
         $dir = __remote_library($url, $args['expected_dir'], $args['subdir']);
         if(is_wp_error($dir)){
+            $data = $dir->get_error_data();
+            $code = (isset($data['code']) ? absint($data['code']) : 0);
+            $expiration = MONTH_IN_SECONDS; // TODO: determine the best way to cache failed responses.
+            if(in_array($code, [
+                403, // Forbidden
+                429, // Too Many Requests
+            ]) or $code >= 500){ // Error
+                $expiration = MINUTE_IN_SECONDS; // TODO: Check for the `retry-after` response header. https://docs.github.com/es/rest/using-the-rest-api/troubleshooting-the-rest-api?apiVersion=2022-11-28#rate-limit-errors
+            }
+            set_transient($key, $dir, $expiration);
+            __set_cache($key, $dir);
             return $dir;
         }
 		if($args['validation_class']){

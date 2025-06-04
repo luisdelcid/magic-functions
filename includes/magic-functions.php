@@ -50,7 +50,7 @@ if(!function_exists('__instance')){
 		} else {
             $method = 'new_instance';
         }
-	    return call_user_func_array([$class, $method]);
+	    return call_user_func([$class, $method]);
 	}
 }
 
@@ -3601,11 +3601,23 @@ if(!function_exists('__github_use')){
         		}
             }
         }
-        if($args['validation']){
+		if($args['validation_class']){
             $missing = [];
-            foreach((array) $args['validation'] as $class){
+            foreach((array) $args['validation_class'] as $class){
                 if(!class_exists($class)){
                     $missing[] = $class;
+                }
+            }
+            if($missing){
+                $message = sprintf(translate('Missing parameter(s): %s'), __implode_and($missing)) . '.';
+                return __error($message);
+            }
+        }
+        if($args['validation_function']){
+            $missing = [];
+            foreach((array) $args['validation_function'] as $function){
+                if(!function_exists($function)){
+                    $missing[] = $function;
                 }
             }
             if($missing){

@@ -1715,7 +1715,7 @@ var __base = class __Base { // Hardcoded.
 	 * @return mixed
 	 */
 	l10n(key = ''){
-        var object_name = this.prefix('l10n');
+        var object_name = this.str_prefix('l10n');
         return __object_property(key, object_name);
     }
 

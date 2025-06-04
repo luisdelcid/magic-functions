@@ -122,7 +122,7 @@ if(!function_exists('__use')){
 	 */
 	function __use($name = '', $ver = ''){
         $args = [
-            'autoload' => 'extension.php',
+            'autoload' => 'autoload.php',
             'owner' => 'luisdelcid', // Hardcoded.
             'repo' => 'mf-' . $name, // Hardcoded.
             'subdir' => 'extensions',

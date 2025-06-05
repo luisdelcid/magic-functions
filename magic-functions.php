@@ -1,13 +1,13 @@
 <?php
 /*
  * Plugin Name: Magic Functions
- * Plugin URI: https://magicfunctions.com
+ * Plugin URI: https://github.com/luisdelcid/magic-functions
  * Description: A collection of magic functions for WordPress plugins and themes.
- * Version: 5.6.4.2
+ * Version: 5.6.4.3
  * Requires at least: 5.6
  * Requires PHP: 5.6
  * Author: Luis del Cid
- * Author URI: https://luisdelcid.com
+ * Author URI: https://github.com/luisdelcid
  * License: GPL v2 or later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain: magic-functions

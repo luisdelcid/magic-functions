@@ -1,10 +1,10 @@
 === Magic Functions ===
 Contributors: luisdelcid
-Donate link: https://magicfunctions.com
+Donate link: https://luisdelcid.com
 Tested up to: 6.8.2
 Requires at least: 5.9
 Requires PHP: 7.4
-Stable tag: 5.7.28
+Stable tag: 5.7.29
 License: GPL v2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -34,4 +34,4 @@ Note that `after_magic_loaded` is the **first action hook available to themes**,
 
 == Changelog ==
 
-To see what’s changed, visit the [GitHub repository](https://github.com/luisdelcid/magic-functions).
+To see what’s changed, visit the [GitHub repository &#187;](https://github.com/luisdelcid/magic-functions)

@@ -6,34 +6,12 @@
 //
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-if(!function_exists('__cache_sanitize_group')){
-    /**
-     * This function’s access is marked private.
-     *
-	 * @return string
-	 */
-	function __cache_sanitize_group($group = ''){
-        $global_key = 'magic-cache'; // Hardcoded.
-        if(!isset($GLOBALS[$global_key]) || !is_array($GLOBALS[$global_key])){
-            $GLOBALS[$global_key] = [];
-        }
-        if(!$group || !is_string($group)){
-            $group = 'default';
-        }
-		$group = __str_prefix($group);
-        if(!isset($GLOBALS[$global_key][$group]) || !is_array($GLOBALS[$global_key][$group])){
-            $GLOBALS[$global_key][$group] = [];
-        }
-        return $group;
-	}
-}
-
 if(!function_exists('__dir')){
 	/**
 	 * @return string|WP_Error
 	 */
 	function __dir($subdir = ''){
-        $target = 'magic-uploads'; // Hardcoded.
+        $target = 'magic-functions'; // Hardcoded.
 	    $subdir = untrailingslashit(ltrim($subdir, '/'));
 	    if($subdir){
 	        $target .= '/' . $subdir;
@@ -165,6 +143,28 @@ if(!function_exists('__include_theme_functions')){
         		include_once $theme . '/' . $filename; // Load the functions for the active theme, for both parent and child theme if applicable.
         	}
         }
+	}
+}
+
+if(!function_exists('__sanitize_cache_group')){
+    /**
+     * This function’s access is marked private.
+     *
+	 * @return string
+	 */
+	function __sanitize_cache_group($group = ''){
+        $global_key = 'magic-cache'; // Hardcoded.
+        if(!isset($GLOBALS[$global_key]) || !is_array($GLOBALS[$global_key])){
+            $GLOBALS[$global_key] = [];
+        }
+        if(!$group || !is_string($group)){
+            $group = 'default';
+        }
+		$group = __str_prefix($group);
+        if(!isset($GLOBALS[$global_key][$group]) || !is_array($GLOBALS[$global_key][$group])){
+            $GLOBALS[$global_key][$group] = [];
+        }
+        return $group;
 	}
 }
 
@@ -937,7 +937,7 @@ if(!function_exists('__cache_delete')){
 	 */
 	function __cache_delete($key = '', $group = ''){
         $global_key = __str_prefix('cache');
-        $group = __cache_sanitize_group($group);
+        $group = __sanitize_cache_group($group);
         if(!isset($GLOBALS[$global_key][$group][$key])){
             return false;
         }
@@ -952,7 +952,7 @@ if(!function_exists('__cache_exists')){
 	 */
 	function __cache_exists($key = '', $group = ''){
         $global_key = __str_prefix('cache');
-        $group = __cache_sanitize_group($group);
+        $group = __sanitize_cache_group($group);
 		return isset($GLOBALS[$global_key][$group][$key]);
 	}
 }
@@ -963,7 +963,7 @@ if(!function_exists('__cache_get')){
 	 */
 	function __cache_get($key = '', $group = ''){
         $global_key = __str_prefix('cache');
-        $group = __cache_sanitize_group($group);
+        $group = __sanitize_cache_group($group);
         return isset($GLOBALS[$global_key][$group][$key]) ? $GLOBALS[$global_key][$group][$key] : null;
 	}
 }
@@ -974,7 +974,7 @@ if(!function_exists('__cache_get_group')){
 	 */
 	function __cache_get_group($group = ''){
         $global_key = __str_prefix('cache');
-        $group = __cache_sanitize_group($group);
+        $group = __sanitize_cache_group($group);
         return $GLOBALS[$global_key][$group];
 	}
 }
@@ -985,7 +985,7 @@ if(!function_exists('__cache_set')){
 	 */
 	function __cache_set($key = '', $data = null, $group = ''){
         $global_key = __str_prefix('cache');
-        $group = __cache_sanitize_group($group);
+        $group = __sanitize_cache_group($group);
         $old_value = isset($GLOBALS[$global_key][$group][$key]) ? $GLOBALS[$global_key][$group][$key] : null;
         if($data === null){
             if($old_value !== null){

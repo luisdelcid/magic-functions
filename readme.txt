@@ -4,7 +4,7 @@ Donate link: https://magicfunctions.com
 Tested up to: 6.8.2
 Requires at least: 5.9
 Requires PHP: 7.4
-Stable tag: 2025.7.28
+Stable tag: 5.7.28
 License: GPL v2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 

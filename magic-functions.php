@@ -1,13 +1,13 @@
 <?php
 /*
  * Plugin Name: Magic Functions
- * Plugin URI: https://github.com/luisdelcid/magic-functions
- * Description: A collection of magic functions for WordPress plugins and themes.
- * Version: 5.6.11
- * Requires at least: 5.6
- * Requires PHP: 5.6
+ * Plugin URI: https://magicfunctions.com
+ * Description: Magic functions for WordPress plugins and themes.
+ * Version: 2025.7.28
+ * Requires at least: 5.9
+ * Requires PHP: 7.4
  * Author: Luis del Cid
- * Author URI: https://github.com/luisdelcid
+ * Author URI: https://luisdelcid.com
  * License: GPL v2 or later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain: magic-functions
@@ -24,25 +24,27 @@
 
 // Make sure we don't expose any info if called directly.
 if(!defined('ABSPATH')){
-    die('Hi there! I\'m just a plugin, not much I can do when called directly.');
+	die('Invalid request.');
 }
 
-// Load PHP classes and functions.
-require_once(plugin_dir_path(__FILE__) . 'includes/magic-functions.php');
+// Load PHP functions.
+require_once plugin_dir_path(__FILE__) . 'includes/magic-functions.php';
 
-// Load JavaScript classes and functions.
-add_action('admin_enqueue_scripts', '__enqueue_dependencies', 5);
-add_action('login_enqueue_scripts', '__enqueue_dependencies', 5);
-add_action('wp_enqueue_scripts', '__enqueue_dependencies', 5);
+// Load JavaScript functions.
+add_action('admin_enqueue_scripts', '__enqueue_dependencies', 0); // Highest priority.
+add_action('login_enqueue_scripts', '__enqueue_dependencies', 0); // Highest priority.
+add_action('wp_enqueue_scripts', '__enqueue_dependencies', 0); // Highest priority.
 
 // Wait for the `plugins_loaded` action hook.
 add_action('plugins_loaded', function(){
 
-    // Check for updates.
+    // Check for plugin updates.
     __plugin_update_checker(__FILE__);
 
+    // Fires after the plugin is fully loaded and instantiated.
     do_action('magic_loaded');
-}, 5);
+
+}, 0); // Highest priority.
 
 // Wait for the `after_setup_theme` action hook.
 add_action('after_setup_theme', function(){
@@ -50,5 +52,7 @@ add_action('after_setup_theme', function(){
     // Load theme functions.
     __include_theme_functions();
 
+    // Fires after the theme is fully loaded and instantiated.
     do_action('after_magic_loaded');
-}, 5);
+
+}, 0); // Highest priority.
